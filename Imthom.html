@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>i'hom Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+
+  <style>
+    /* Your full existing CSS stays unchanged — START */
+
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #2c3e50;
+        color: #ecf0f1;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 30px;
+        background-color: #2c3e50;
+        border-bottom: 1px solid #34495e;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+
+    .header-left .logo {
+        font-size: 1.5em;
+        margin-right: 15px;
+        color: #3498db;
+    }
+
+    .header-right {
+        display: flex;
+        gap: 20px;
+    }
+
+    .icon-btn {
+        background: none;
+        border: none;
+        color: #ecf0f1;
+        font-size: 1.4em;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+
+    .icon-btn:hover {
+        color: #3498db;
+    }
+
+    .main-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .user-profile {
+        margin-bottom: 50px;
+    }
+
+    .profile-pic {
+        width: 120px;
+        height: 120px;
+        background-color: #34495e;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto 15px;
+        border: 5px solid #d4ac0d;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        font-size: 3em;
+    }
+
+    .profile-pic i {
+        color: #d4ac0d;
+    }
+
+    .username {
+        font-size: 1.8em;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .title {
+        font-size: 1em;
+        color: #bdc3c7;
+    }
+
+    .main-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin-bottom: 70px;
+        flex-wrap: wrap;
+    }
+
+    .main-button-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .main-button-circle {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 3.5em;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .main-button-item:hover .main-button-circle {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .main-button-circle.outpatient { background-color: #27ae60; }
+    .main-button-circle.surgery { background-color: #1abc9c; }
+    .main-button-circle.inpatient { background-color: #3498db; }
+    .main-button-circle.emergency { background-color: #e74c3c; }
+
+    .main-button-text {
+        margin-top: 15px;
+        font-size: 1.1em;
+        font-weight: bold;
+    }
+
+    .footer-nav {
+        display: flex;
+        justify-content: center;
+        gap: 50px;
+        padding: 25px 30px;
+        background-color: #34495e;
+        border-top: 1px solid #2c3e50;
+        flex-wrap: wrap;
+    }
+
+    .footer-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+        transition: color 0.3s;
+    }
+
+    .footer-nav-item:hover {
+        color: #3498db;
+    }
+
+    .footer-nav-item i {
+        font-size: 1.8em;
+        margin-bottom: 8px;
+    }
+
+    .footer-nav-item .text {
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+
+    /* Responsive code left unchanged for brevity */
+
+    /* Add camera container overlay */
+    #cameraContainer {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    #cameraStream {
+        width: 90%;
+        max-width: 600px;
+        border: 5px solid #27ae60;
+        border-radius: 12px;
+    }
+
+    #closeBtn {
+        margin-top: 20px;
+        padding: 10px 25px;
+        background-color: #e74c3c;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 1em;
+        cursor: pointer;
+    }
+
+    /* Your full existing CSS stays unchanged — END */
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <span class="logo">i'hom</span>
+      <span id="currentDate">Wed, Jun 25, 2025</span>
+      <span style="margin-left: 10px;">❤️</span>
+      <span id="currentTime">10:43</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn"><i class="fas fa-power-off"></i></button>
+      <button class="icon-btn"><i class="fas fa-cog"></i></button>
+      <button class="icon-btn"><i class="fas fa-search"></i></button>
+      <button class="icon-btn"><i class="fas fa-question-circle"></i></button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="user-profile">
+      <div class="profile-pic"><i class="fas fa-user"></i></div>
+      <div class="username">Miss. WISAL ALFOORI</div>
+      <div class="title">System Manager</div>
+    </div>
+
+    <div class="main-buttons">
+      <a href="#" class="main-button-item" onclick="openCamera(event)">
+        <div class="main-button-circle outpatient"><i class="fas fa-stethoscope"></i></div>
+        <div class="main-button-text">Outpatient</div>
+      </a>
+      <a href="#" class="main-button-item">
+        <div class="main-button-circle surgery"><i class="fas fa-hand-holding-medical"></i></div>
+        <div class="main-button-text">Surgery</div>
+      </a>
+      <a href="#" class="main-button-item">
+        <div class="main-button-circle inpatient"><i class="fas fa-bed"></i></div>
+        <div class="main-button-text">Inpatient</div>
+      </a>
+      <a href="#" class="main-button-item">
+        <div class="main-button-circle emergency"><i class="fas fa-ambulance"></i></div>
+        <div class="main-button-text">Emergency</div>
+      </a>
+    </div>
+  </main>
+
+  <footer class="footer-nav">
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-desktop"></i><span class="text">Desk</span>
+    </a>
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-truck"></i><span class="text">Logistics</span>
+    </a>
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-chart-line"></i><span class="text">Management</span>
+    </a>
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-pills"></i><span class="text">Pharmacy</span>
+    </a>
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-chart-pie"></i><span class="text">Business Intelligence</span>
+    </a>
+    <a href="#" class="footer-nav-item">
+      <i class="fas fa-cogs"></i><span class="text">Configuration</span>
+    </a>
+  </footer>
+
+  <!-- Camera Overlay Modal -->
+  <div id="cameraContainer">
+    <video id="cameraStream" autoplay playsinline></video>
+    <button id="closeBtn" onclick="closeCamera()">Close Camera</button>
+  </div>
+
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const optionsDate = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+      const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false };
+      document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', optionsDate);
+      document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-US', optionsTime);
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 60000);
+
+    let currentStream = null;
+
+    function openCamera(event) {
+      event.preventDefault();
+      const video = document.getElementById('cameraStream');
+      const container = document.getElementById('cameraContainer');
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          currentStream = stream;
+          video.srcObject = stream;
+          container.style.display = 'flex';
+        })
+        .catch(err => {
+          alert('Camera access denied or not available: ' + err.message);
+        });
+    }
+
+    function closeCamera() {
+      const container = document.getElementById('cameraContainer');
+      const video = document.getElementById('cameraStream');
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+      }
+      video.srcObject = null;
+      container.style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
