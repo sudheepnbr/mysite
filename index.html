@@ -2,79 +2,128 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OIH Premium Designer – v86.9.90</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+<title>OIH Premium Suite – v87.0.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
 
 <style>
 :root { 
     --gold: #c9a035; 
-    --bg-dark: #000000;
-    --panel-bg: rgba(15, 15, 15, 0.98);
-    --input-fill: #e0f2fe; 
+    --gold-glow: rgba(201, 160, 53, 0.4);
+    --bg-dark: #050505;
+    --panel-bg: rgba(15, 15, 15, 0.95);
+    --accent-blue: #3b82f6;
 }
 
-body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #fff; overflow-x: hidden; touch-action: none; }
+body { 
+    margin: 0; font-family: 'Inter', sans-serif; 
+    background: var(--bg-dark); color: #fff; 
+    overflow-x: hidden; touch-action: none;
+    background-image: radial-gradient(circle at 50% 50%, #111 0%, #050505 100%);
+}
 
-/* --- LOGIN --- */
-#login-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #000; }
-.login-card { background: #111; padding: 40px; border-radius: 20px; border: 1px solid var(--gold); width: 300px; text-align: center; }
-.login-card input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 5px; border: none; background: var(--input-fill); font-weight: 700; }
-.login-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--gold); border: none; font-weight: 800; cursor: pointer; border-radius: 5px; }
+/* --- LUXURY LOGIN SCREEN --- */
+#login-overlay { 
+    position: fixed; inset: 0; z-index: 99999; display: flex; 
+    align-items: center; justify-content: center; 
+    background: url('https://images.unsplash.com/photo-1635776062127-d379bfcba9f8?q=80&w=2532&auto=format&fit=crop') center/cover;
+}
+#login-overlay::before { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
 
-/* --- UI LAYOUT --- */
-.wrap { display: none; max-width: 1240px; margin: auto; padding: 20px; grid-template-columns: 340px 1fr; gap: 25px; padding-bottom: 160px; }
-.panel { background: var(--panel-bg); border-radius: 15px; padding: 20px; border: 1px solid #333; position: sticky; top: 20px; height: fit-content; }
-.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); padding: 10px; border-radius: 8px; font-weight: 800; text-align: center; cursor: pointer; margin-bottom: 10px; }
-input[type="text"] { width: 100%; padding: 10px; margin: 5px 0 15px 0; box-sizing: border-box; border-radius: 5px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; }
-.action-row { display: flex; gap: 10px; }
-.icon-btn { flex: 1; height: 45px; border-radius: 8px; border: none; cursor: pointer; font-size: 20px; color: #fff; }
+.login-card { 
+    position: relative; background: rgba(20, 20, 20, 0.7); 
+    padding: 50px 40px; border-radius: 30px; 
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    width: 350px; text-align: center; 
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+}
+.login-card h2 { font-weight: 900; letter-spacing: 4px; color: var(--gold); margin-bottom: 30px; }
+.login-card input { 
+    width: 100%; box-sizing: border-box; padding: 15px; margin-top: 15px; 
+    border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); 
+    background: rgba(255,255,255,0.05); color: #fff; font-size: 14px;
+    transition: 0.3s;
+}
+.login-card input:focus { border-color: var(--gold); background: rgba(255,255,255,0.1); outline: none; }
+.login-btn { 
+    width: 100%; margin-top: 30px; padding: 15px; 
+    background: linear-gradient(135deg, #ebc665 0%, #c9a035 100%); 
+    border: none; font-weight: 800; cursor: pointer; border-radius: 12px; 
+    color: #000; letter-spacing: 1px; transition: 0.3s;
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px var(--gold-glow); }
 
-canvas { width: 100%; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px; background: #111; cursor: crosshair; }
+/* --- MAIN UI LAYOUT --- */
+.wrap { display: none; max-width: 1400px; margin: auto; padding: 40px 20px; grid-template-columns: 380px 1fr; gap: 40px; padding-bottom: 180px; }
 
-/* --- ALWAYS VISIBLE PREVIEW BAR --- */
+.panel { 
+    background: var(--panel-bg); border-radius: 24px; padding: 30px; 
+    border: 1px solid rgba(255,255,255,0.05); position: sticky; top: 40px; height: fit-content;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.section-title { font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; display: block; opacity: 0.8; }
+
+.file-box { 
+    background: #111; color: #fff; border: 1px dashed var(--gold); 
+    padding: 20px; border-radius: 12px; font-weight: 600; text-align: center; 
+    cursor: pointer; margin-bottom: 20px; transition: 0.3s; font-size: 13px;
+}
+.file-box:hover { background: rgba(201, 160, 53, 0.1); }
+
+.input-group { margin-bottom: 20px; }
+.input-group label { display: block; font-size: 10px; color: #666; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; }
+.input-group input { 
+    width: 100%; padding: 12px; box-sizing: border-box; border-radius: 8px; 
+    border: 1px solid #222; background: #000; color: #fff; font-weight: 600; transition: 0.3s;
+}
+.input-group input:focus { border-color: var(--gold); }
+
+.action-row { display: flex; gap: 15px; margin-top: 30px; }
+.icon-btn { 
+    flex: 1; height: 55px; border-radius: 12px; border: none; 
+    cursor: pointer; font-size: 14px; font-weight: 800; color: #fff;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+
+canvas { 
+    width: 100%; border-radius: 20px; border: 1px solid #1a1a1a; 
+    margin-bottom: 30px; background: #000; cursor: crosshair;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+
+/* --- PREMIUM TICKER BAR --- */
 #ticker-bar { 
     position: fixed; bottom: 0; left: 0; width: 100%; 
-    background: #050505; 
-    border-top: 3px solid var(--gold); 
-    height: 110px; 
-    display: none; /* Changed to flex via JS after login */
-    align-items: center; 
-    z-index: 9999999 !important; 
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.9);
+    background: rgba(5, 5, 5, 0.9); backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(201, 160, 53, 0.3); 
+    height: 120px; display: none; align-items: center; 
+    z-index: 99999;
 }
 .ticker-label { 
-    background: var(--gold); color: #000; padding: 0 15px; 
+    background: var(--gold); color: #000; padding: 0 25px; 
     height: 100%; display: flex; align-items: center; 
-    font-weight: 900; font-size: 11px; text-align: center; width: 85px; z-index: 2;
+    font-weight: 900; font-size: 12px; text-align: center;
 }
-.ticker-view-port { flex-grow: 1; overflow: hidden; display: flex; align-items: center; height: 100%; }
-.marquee { display: flex; white-space: nowrap; animation: scroll 30s linear infinite; padding-left: 20px; }
-.marquee:hover { animation-play-state: paused; }
-.empty-msg { color: #444; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
-
+.marquee { display: flex; white-space: nowrap; animation: scroll 40s linear infinite; }
 .card-thumb { 
-    height: 75px; width: 120px; background: #1a1a1a; border-radius: 4px; 
-    margin-right: 20px; border: 1px solid #333; overflow: hidden; 
-    position: relative; flex-shrink: 0; cursor: pointer; transition: 0.2s;
+    height: 80px; width: 126px; background: #000; border-radius: 10px; 
+    margin: 0 15px; border: 1px solid #222; overflow: hidden; 
+    position: relative; flex-shrink: 0; transition: 0.4s;
 }
-.card-thumb:hover { border-color: #fff; transform: translateY(-5px); }
-.card-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 8px; text-align: center; padding: 2px 0; font-weight: 800; }
+.card-thumb:hover { border-color: var(--gold); transform: scale(1.1) translateY(-5px); }
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+.card-thumb-tag { 
+    position: absolute; bottom: 0; width: 100%; background: linear-gradient(transparent, #000); 
+    color: var(--gold); font-size: 9px; text-align: center; padding: 5px 0; font-weight: 800; 
+}
 
 @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-/* PRINT SETTINGS (PORTRAIT MECHANICAL FEED) */
 @media print {
     @page { size: 54mm 85.6mm; margin: 0; }
     #login-overlay, .panel, #ticker-bar { display: none !important; }
-    body { background: white; }
-    canvas { 
-        width: 85.6mm !important; height: 54mm !important; 
-        transform: rotate(90deg) translate(0, -54mm); 
-        transform-origin: top left; 
-        page-break-after: always;
-        border: none !important;
-    }
+    canvas { width: 85.6mm !important; height: 54mm !important; transform: rotate(90deg) translate(0, -54mm); transform-origin: top left; }
 }
 </style>
 </head>
@@ -82,43 +131,50 @@ canvas { width: 100%; border-radius: 10px; border: 1px solid #444; margin-bottom
 
 <div id="login-overlay">
     <div class="login-card">
-        <h2 style="color:var(--gold)">OIH ACCESS</h2>
-        <input type="text" id="user" placeholder="Username">
-        <input type="password" id="pass" placeholder="Password">
-        <button class="login-btn" onclick="tryLogin()">ENTER SYSTEM</button>
+        <h2>OIH PREMIUM</h2>
+        <input type="text" id="user" placeholder="SYSTEM ID">
+        <input type="password" id="pass" placeholder="ACCESS KEY">
+        <button class="login-btn" onclick="tryLogin()">INITIALIZE</button>
     </div>
 </div>
 
 <div class="wrap" id="app">
     <div class="panel">
-        <label>Photo</label>
-        <div class="file-box" onclick="document.getElementById('imgIn').click()">UPLOAD IMAGE</div>
+        <span class="section-title">Identity Assets</span>
+        <div class="file-box" onclick="document.getElementById('imgIn').click()">DROP OR CLICK FOR PHOTO</div>
         <input type="file" id="imgIn" style="display:none" onchange="previewImg(event)">
         
-        <label>Name</label><input type="text" id="name" oninput="render()">
-        <label>Designation</label><input type="text" id="job" oninput="render()">
-        <label>ID Number</label><input type="text" id="idnum" oninput="render()">
+        <span class="section-title">Core Data</span>
+        <div class="input-group">
+            <label>Legal Name</label>
+            <input type="text" id="name" placeholder="John Doe" oninput="render()">
+        </div>
+        <div class="input-group">
+            <label>Operational Title</label>
+            <input type="text" id="job" placeholder="Lead Director" oninput="render()">
+        </div>
+        <div class="input-group">
+            <label>Internal ID No</label>
+            <input type="text" id="idnum" placeholder="OIH-9900" oninput="render()">
+        </div>
 
         <div class="action-row">
             <button class="icon-btn" style="background:#10b981" onclick="saveCard()">💾 SAVE</button>
             <button class="icon-btn" style="background:#3b82f6" onclick="window.print()">🖨️ PRINT</button>
-            <button class="icon-btn" id="lBtn" style="background:#333" onclick="toggleLock()">🔒</button>
+            <button class="icon-btn" id="lBtn" style="background:#222; border: 1px solid #333;" onclick="toggleLock()">🔒</button>
         </div>
-        <p style="font-size: 9px; color: #555; margin-top: 20px; text-align: center;">IDP SMART-31 PORTRAIT MODE ACTIVE</p>
     </div>
 
-    <div>
+    <div class="preview-area">
         <canvas id="front"></canvas>
         <canvas id="back"></canvas>
     </div>
 </div>
 
 <div id="ticker-bar">
-    <div class="ticker-label">LAST 10<br>CARDS</div>
-    <div class="ticker-view-port">
-        <div class="marquee" id="ticker-track">
-            <div class="empty-msg">Waiting for first save...</div>
-        </div>
+    <div class="ticker-label">ACTIVITY LOG</div>
+    <div class="marquee" id="ticker-track">
+        <div style="padding: 0 40px; color: #333; font-weight: 800; letter-spacing: 5px;">NO SESSION DATA RECORDED</div>
     </div>
 </div>
 
@@ -141,28 +197,24 @@ function render() {
     fctx.drawImage(assets.ov, ovPos.x, ovPos.y, ovPos.w, ovPos.h);
     
     fctx.fillStyle = "#000";
-    fctx.font = "800 46px Inter"; fctx.fillText(document.getElementById('name').value.toUpperCase(), 70, 465);
-    fctx.font = "700 34px Inter"; fctx.fillText(document.getElementById('job').value, 70, 525);
-    fctx.font = "700 30px Inter"; fctx.fillText("ID No: " + document.getElementById('idnum').value, 70, 580);
+    fctx.font = "900 46px Inter"; fctx.fillText(document.getElementById('name').value.toUpperCase(), 70, 465);
+    fctx.font = "400 34px Inter"; fctx.fillText(document.getElementById('job').value, 70, 525);
+    fctx.font = "700 30px Inter"; fctx.fillText("ID NO: " + document.getElementById('idnum').value, 70, 580);
 
     if(!isLocked) {
-        fctx.strokeStyle = "gold"; fctx.lineWidth = 3;
+        fctx.strokeStyle = "rgba(201,160,53,1)"; fctx.setLineDash([10, 5]); fctx.lineWidth = 2;
         fctx.strokeRect(phPos.x, phPos.y, phPos.w, phPos.h);
-        fctx.strokeRect(ovPos.x, ovPos.y, ovPos.w, ovPos.h);
-        fctx.fillStyle = "gold";
-        fctx.fillRect(phPos.x+phPos.w-20, phPos.y+phPos.h-20, 20, 20);
-        fctx.fillRect(ovPos.x+ovPos.w-20, ovPos.y+ovPos.h-20, 20, 20);
+        fctx.setLineDash([]);
+        fctx.fillStyle = "var(--gold)";
+        fctx.fillRect(phPos.x+phPos.w-15, phPos.y+phPos.h-15, 15, 15);
     }
-
     bctx.clearRect(0,0,1011,638);
     bctx.drawImage(assets.b, -24, 0, 1059, 678);
 }
 
-// History Logic
 function refreshTicker() {
     const list = JSON.parse(localStorage.getItem('oih_final_history')) || [];
     const track = document.getElementById('ticker-track');
-    
     if(list.length > 0) {
         const html = list.map(item => `
             <div class="card-thumb">
@@ -171,61 +223,20 @@ function refreshTicker() {
             </div>
         `).join('');
         track.innerHTML = html + html;
-        track.style.animation = "scroll 30s linear infinite";
     }
 }
 
 function saveCard() {
     render();
-    const snap = document.createElement('canvas');
-    snap.width = 120; snap.height = 75;
-    snap.getContext('2d').drawImage(fv, 0, 0, 120, 75);
-    
+    const snap = document.createElement('canvas'); snap.width = 126; snap.height = 80;
+    snap.getContext('2d').drawImage(fv, 0, 0, 126, 80);
     let list = JSON.parse(localStorage.getItem('oih_final_history')) || [];
     list.unshift({ id: document.getElementById('idnum').value || 'ID', img: snap.toDataURL('image/jpeg', 0.5) });
     if(list.length > 10) list.pop();
-    
     localStorage.setItem('oih_final_history', JSON.stringify(list));
     refreshTicker();
-
-    const link = document.createElement('a');
-    link.download = (document.getElementById('name').value || 'Card') + '.png'; 
-    link.href = fv.toDataURL(); 
-    link.click();
-}
-
-// Interaction
-fv.onmousedown = (e) => {
-    if(isLocked) return;
-    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
-    const hit = (obj) => x > obj.x && x < obj.x+obj.w && y > obj.y && y < obj.y+obj.h;
-    
-    if(x > phPos.x+phPos.w-40 && y > phPos.y+phPos.h-40) { active = phPos; mode = 'sz'; }
-    else if(hit(phPos)) { active = phPos; mode = 'mv'; }
-    else if(x > ovPos.x+ovPos.w-40 && y > ovPos.y+ovPos.h-40) { active = ovPos; mode = 'sz'; }
-    else if(hit(ovPos)) { active = ovPos; mode = 'mv'; }
-    
-    if(active) start = { x: x - active.x, y: y - active.y, w: active.w, h: active.h, px: x, py: y };
-};
-
-window.onmousemove = (e) => {
-    if(!active) return;
-    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
-    if(mode === 'mv') { active.x = x - start.x; active.y = y - start.y; }
-    else { 
-        active.w = Math.max(50, start.w + (x - start.px)); 
-        if(active === phPos) active.h = active.w/phRatio;
-        else active.h = Math.max(50, start.h + (y - start.py));
-    }
-    render();
-};
-window.onmouseup = () => active = null;
-
-function toggleLock() { 
-    isLocked = !isLocked; 
-    document.getElementById('lBtn').classList.toggle('unlocked', !isLocked);
-    document.getElementById('lBtn').innerHTML = isLocked ? "🔒" : "🔓";
-    render(); 
+    const link = document.createElement('a'); link.download = 'OIH_'+document.getElementById('idnum').value+'.png';
+    link.href = fv.toDataURL(); link.click();
 }
 
 function tryLogin() {
@@ -236,6 +247,30 @@ function tryLogin() {
         refreshTicker();
     }
 }
+
+function toggleLock() { 
+    isLocked = !isLocked; 
+    document.getElementById('lBtn').innerHTML = isLocked ? "🔒" : "🔓";
+    document.getElementById('lBtn').style.borderColor = isLocked ? "#333" : "var(--gold)";
+    render(); 
+}
+
+// Drag & Drop logic
+fv.onmousedown = (e) => {
+    if(isLocked) return;
+    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
+    if(x > phPos.x+phPos.w-40 && y > phPos.y+phPos.h-40) { active = phPos; mode = 'sz'; }
+    else if(x > phPos.x && x < phPos.x+phPos.w && y > phPos.y && y < phPos.y+phPos.h) { active = phPos; mode = 'mv'; }
+    if(active) start = { x: x - active.x, y: y - active.y, w: active.w, h: active.h, px: x, py: y };
+};
+window.onmousemove = (e) => {
+    if(!active) return;
+    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
+    if(mode === 'mv') { active.x = x - start.x; active.y = y - start.y; }
+    else { active.w = Math.max(50, start.w + (x - start.px)); active.h = active.w/phRatio; }
+    render();
+};
+window.onmouseup = () => active = null;
 
 function previewImg(e) {
     const reader = new FileReader();
