@@ -2,199 +2,132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH Premium - PDF Editor Suite</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
-    
+    <title>OIH PDF Pro Editor</title>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-
     <style>
-        :root { --gold: #c9a035; --bg: #0f0f0f; --panel: #1a1a1a; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; }
-
-        /* --- DASHBOARD & UI --- */
-        .toolbar { 
-            position: sticky; top: 0; background: var(--panel); padding: 15px; 
-            display: flex; gap: 10px; border-bottom: 1px solid var(--gold); z-index: 100;
-            align-items: center; justify-content: center;
-        }
-
-        .btn { 
-            padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; 
-            font-weight: 700; font-size: 13px; transition: 0.2s;
-        }
-        .btn-gold { background: var(--gold); color: #000; }
-        .btn-white { background: #fff; color: #000; }
-        .btn-save { background: #10b981; color: #fff; }
-
-        /* --- EDITOR CANVAS --- */
-        #editor-viewport { 
-            display: flex; flex-direction: column; align-items: center; padding: 40px; 
-            background: #222; min-height: 100vh;
-        }
+        :root { --gold: #c9a035; --dark: #121212; }
+        body { margin: 0; font-family: sans-serif; background: var(--dark); color: white; text-align: center; }
         
-        #pdf-container { position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.5); background: white; }
+        .menu { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; }
+        .btn { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-tool { background: var(--gold); color: black; }
+        .btn-save { background: #10b981; color: white; }
+
+        #container { position: relative; display: inline-block; margin-top: 20px; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         canvas { display: block; }
 
-        /* --- OVERLAYS --- */
-        .text-overlay {
-            position: absolute; color: black; font-family: Arial, sans-serif;
-            font-size: 14px; min-width: 20px; outline: 1px dashed #ccc;
-            cursor: move; padding: 2px; white-space: nowrap;
+        /* The "Eraser" Box */
+        .mask { 
+            position: absolute; background: white; border: 1px dashed #ccc; 
+            min-width: 20px; min-height: 15px; cursor: move; 
         }
-        .text-overlay:focus { outline: 2px solid var(--gold); background: rgba(201, 160, 53, 0.1); }
-
-        .whiteout-overlay {
-            position: absolute; background: white; border: 1px solid #ddd;
-            cursor: move; min-width: 10px; min-height: 10px;
+        /* The New Text Box */
+        .text-box { 
+            position: absolute; color: black; min-width: 50px; outline: 1px dashed var(--gold);
+            cursor: move; padding: 2px; background: rgba(255,255,255,0.5); font-family: Arial;
         }
-        .resizer {
-            width: 8px; height: 8px; background: var(--gold);
-            position: absolute; right: -4px; bottom: -4px; cursor: nwse-resize;
-        }
+        .resizer { width: 8px; height: 8px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
     </style>
 </head>
 <body>
 
-<div class="toolbar">
-    <div style="font-weight: 800; color: var(--gold); margin-right: 20px;">OIH PDF EDITOR</div>
-    <input type="file" id="upload-pdf" accept="application/pdf" style="display:none">
-    <button class="btn btn-white" onclick="document.getElementById('upload-pdf').click()">📂 Open PDF</button>
-    <button class="btn btn-gold" onclick="addText()">➕ Add Text</button>
-    <button class="btn btn-gold" onclick="addWhiteout()">⬜ Hide Text (Whiteout)</button>
-    <button class="btn btn-save" onclick="exportPDF()">💾 Download Edited PDF</button>
+<div class="menu">
+    <input type="file" id="pdf-file" accept="application/pdf" style="display:none">
+    <button class="btn btn-tool" onclick="document.getElementById('pdf-file').click()">📂 Open Document</button>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Mask (Erase) Text</button>
+    <button class="btn btn-tool" onclick="addText()">➕ Add New Text</button>
+    <button class="btn btn-save" onclick="savePdf()">💾 Save Changes</button>
 </div>
 
-<div id="editor-viewport">
-    <div id="pdf-container">
-        <canvas id="pdf-render"></canvas>
-    </div>
+<div id="container">
+    <canvas id="pdf-canvas"></canvas>
 </div>
 
 <script>
     const { PDFDocument, rgb } = PDFLib;
-    let pdfDocBytes = null;
-    let overlays = []; // Stores both text and whiteout elements
+    let pdfBytes = null;
+    let elements = [];
 
-    // --- 1. LOAD PDF ---
-    document.getElementById('upload-pdf').addEventListener('change', async (e) => {
+    document.getElementById('pdf-file').onchange = async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
-        pdfDocBytes = await file.arrayBuffer();
-        renderPDFPage(1);
-    });
-
-    async function renderPDFPage(pageNum) {
-        const loadingTask = pdfjsLib.getDocument({data: pdfDocBytes});
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(pageNum);
-        
+        pdfBytes = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        const page = await pdf.getPage(1);
         const viewport = page.getViewport({scale: 1.5});
-        const canvas = document.getElementById('pdf-render');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        const canvas = document.getElementById('pdf-canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+        document.getElementById('container').style.width = canvas.width + 'px';
+    };
 
-        await page.render({canvasContext: context, viewport: viewport}).promise;
-        document.getElementById('pdf-container').style.width = canvas.width + 'px';
-        document.getElementById('pdf-container').style.height = canvas.height + 'px';
-    }
-
-    // --- 2. ADD TOOLS ---
-    function addText() {
-        const el = document.createElement('div');
-        el.className = 'text-overlay';
-        el.contentEditable = true;
-        el.innerText = "New Text";
-        setupElement(el, "text");
-    }
-
-    function addWhiteout() {
-        const el = document.createElement('div');
-        el.className = 'whiteout-overlay';
-        
+    function addMask() {
+        const div = createEl('mask');
+        div.style.width = "80px"; div.style.height = "20px";
         const resizer = document.createElement('div');
         resizer.className = 'resizer';
-        el.appendChild(resizer);
-        
-        setupElement(el, "whiteout");
-        setupResizer(el, resizer);
+        div.appendChild(resizer);
+        setupResize(div, resizer);
     }
 
-    function setupElement(el, type) {
-        el.style.left = "100px";
-        el.style.top = "100px";
-        el.dataset.type = type;
-        document.getElementById('pdf-container').appendChild(el);
-        makeDraggable(el);
-        overlays.push(el);
-        el.focus();
+    function addText() {
+        const div = createEl('text-box');
+        div.contentEditable = true;
+        div.innerText = "New Data";
     }
 
-    // --- 3. DRAG & RESIZE LOGIC ---
-    function makeDraggable(el) {
+    function createEl(type) {
+        const div = document.createElement('div');
+        div.className = type; div.dataset.type = type;
+        div.style.left = "50px"; div.style.top = "50px";
+        document.getElementById('container').appendChild(div);
+        setupDrag(div);
+        elements.push(div);
+        return div;
+    }
+
+    function setupDrag(el) {
         el.onmousedown = (e) => {
-            if (e.target.className === 'resizer') return;
-            let sx = e.clientX - el.offsetLeft;
-            let sy = e.clientY - el.offsetTop;
-            document.onmousemove = (e) => {
-                el.style.left = (e.clientX - sx) + 'px';
-                el.style.top = (e.clientY - sy) + 'px';
-            };
+            if(e.target.className === 'resizer') return;
+            let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
+            document.onmousemove = (e) => { el.style.left = (e.clientX-ox)+'px'; el.style.top = (e.clientY-oy)+'px'; };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
 
-    function setupResizer(el, resizer) {
+    function setupResize(el, resizer) {
         resizer.onmousedown = (e) => {
             e.stopPropagation();
-            let startW = el.offsetWidth;
-            let startH = el.offsetHeight;
-            let startX = e.clientX;
-            let startY = e.clientY;
-
             document.onmousemove = (e) => {
-                el.style.width = startW + (e.clientX - startX) + 'px';
-                el.style.height = startH + (e.clientY - startY) + 'px';
+                el.style.width = (e.clientX - el.getBoundingClientRect().left) + 'px';
+                el.style.height = (e.clientY - el.getBoundingClientRect().top) + 'px';
             };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
 
-    // --- 4. EXPORT (FLATTEN) ---
-    async function exportPDF() {
-        if (!pdfDocBytes) return alert("Please open a PDF first.");
-        const pdfDoc = await PDFDocument.load(pdfDocBytes);
-        const page = pdfDoc.getPages()[0];
+    async function savePdf() {
+        const doc = await PDFDocument.load(pdfBytes);
+        const page = doc.getPages()[0];
         const { width, height } = page.getSize();
-        const canvas = document.getElementById('pdf-render');
+        const canv = document.getElementById('pdf-canvas');
 
-        for (let el of overlays) {
-            const rect = el.getBoundingClientRect();
-            const canvRect = canvas.getBoundingClientRect();
+        for (let el of elements) {
+            const r = el.getBoundingClientRect();
+            const cr = canv.getBoundingClientRect();
+            const px = (r.left - cr.left) * (width / cr.width);
+            const py = height - ((r.top - cr.top) * (height / cr.height)) - (el.dataset.type === 'mask' ? (r.height * (height / cr.height)) : 12);
 
-            // Coordinate mapping
-            const x = (rect.left - canvRect.left) * (width / canvRect.width);
-            const y = height - ((rect.top - canvRect.top) * (height / canvRect.height)) - (el.dataset.type === 'whiteout' ? (rect.height * (height / canvRect.height)) : 12);
-
-            if (el.dataset.type === 'whiteout') {
-                page.drawRectangle({
-                    x, y,
-                    width: rect.width * (width / canvRect.width),
-                    height: rect.height * (height / canvRect.height),
-                    color: rgb(1, 1, 1),
-                });
+            if(el.dataset.type === 'mask') {
+                page.drawRectangle({ x: px, y: py, width: r.width*(width/cr.width), height: r.height*(height/cr.height), color: rgb(1,1,1) });
             } else {
-                page.drawText(el.innerText, { x, y, size: 12, color: rgb(0, 0, 0) });
+                page.drawText(el.innerText, { x: px, y: py, size: 12, color: rgb(0,0,0) });
             }
         }
-
-        const bytes = await pdfDoc.save();
-        const blob = new Blob([bytes], { type: "application/pdf" });
+        const savedBytes = await doc.save();
+        const blob = new Blob([savedBytes], {type: 'application/pdf'});
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = "Edited_OIH_Doc.pdf";
-        link.click();
+        link.href = URL.createObjectURL(blob); link.download = "Edited.pdf"; link.click();
     }
 </script>
 </body>
