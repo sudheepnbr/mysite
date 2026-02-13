@@ -2,215 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Master - OCR Edition</title>
+    <title>OIH PDF Pro - Auto-Sync OCR</title>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     
     <style>
-        :root { --gold: #c9a035; --dark: #0a0a0a; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: #151515; color: white; overflow: hidden; }
+        :root { --gold: #c9a035; --dark: #0d0d0d; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; overflow: hidden; }
         
-        /* Dashboard */
-        .toolbar { background: #000; padding: 10px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 8px; z-index: 1000; position: relative; }
-        .btn { padding: 8px 14px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
-        .btn-ocr { background: #6366f1; color: white; } /* Indigo for OCR */
-        .btn-tool { background: var(--gold); color: #000; }
-        .btn-save { background: #10b981; color: white; }
-        
-        #loading-overlay { display: none; position: fixed; top: 60px; left: 0; right: 0; background: var(--gold); color: black; padding: 5px; text-align: center; font-size: 12px; z-index: 2000; font-weight: bold; }
+        .toolbar { background: #000; padding: 12px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 10px; z-index: 100; position: relative; }
+        .btn { padding: 10px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; }
+        .btn-ocr { background: #4f46e5; color: white; }
+        .btn-tool { background: var(--gold); color: black; }
+        .btn-save { background: #10b981; color: white; box-shadow: 0 0 15px rgba(16,185,129,0.3); }
 
-        /* Workspace */
-        #workspace { height: calc(100vh - 70px); overflow: auto; padding: 40px; display: flex; justify-content: center; }
-        #canvas-wrap { position: relative; background: white; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        #workspace { height: calc(100vh - 75px); overflow: auto; padding: 40px; background: #222; text-align: center; }
+        #canvas-wrap { position: relative; display: inline-block; background: white; box-shadow: 0 0 50px rgba(0,0,0,0.6); }
         canvas { display: block; }
 
-        /* Editable OCR Layers */
-        .ocr-box { 
-            position: absolute; color: transparent; background: rgba(99, 102, 241, 0.1); 
-            cursor: text; border: 1px solid transparent; transition: 0.1s;
+        /* OCR Editable Fields */
+        .ocr-field { 
+            position: absolute; color: transparent; background: rgba(79, 70, 229, 0.05); 
+            border: 1px solid transparent; outline: none; white-space: nowrap; overflow: hidden;
         }
-        .ocr-box:hover { background: rgba(99, 102, 241, 0.3); border-color: var(--gold); }
-        .ocr-box:focus { color: black; background: white; border-color: var(--gold); outline: none; z-index: 100; }
+        .ocr-field:hover { background: rgba(79, 70, 229, 0.15); border-color: var(--gold); cursor: text; }
+        /* When clicked/editing, make text visible and background white */
+        .ocr-field:focus { color: black !important; background: white !important; border-color: var(--gold); z-index: 100; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
 
-        /* Custom Overlays */
-        .overlay { position: absolute; cursor: move; }
-        .mask { background: white; border: 1px dashed #ccc; }
-        .resizer { width: 8px; height: 8px; background: var(--gold); position: absolute; right: -4px; bottom: -4px; cursor: se-resize; border-radius: 50%; }
+        .loading-bar { display: none; position: fixed; top: 65px; left: 50%; transform: translateX(-50%); background: var(--gold); color: black; padding: 5px 20px; border-radius: 20px; font-weight: bold; font-size: 12px; z-index: 1000; }
         
-        .exporting .ocr-box { background: transparent !important; border: none !important; color: black !important; }
-        .exporting .mask { border: none !important; }
-        .exporting .resizer { display: none !important; }
+        /* Clean Export Styles */
+        .exporting .ocr-field { border: none !important; background: transparent !important; }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay">OCR is scanning document... Please wait...</div>
+<div id="loader" class="loading-bar">OCR Scanning... Please Wait...</div>
 
 <div class="toolbar">
     <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
-    <button class="btn btn-tool" onclick="document.getElementById('pdf-input').click()">📂 Open PDF</button>
-    <button class="btn btn-ocr" onclick="runOCR()">🔍 Run OCR (Make Editable)</button>
-    <button class="btn btn-tool" onclick="addMask()">⬜ Erase Area</button>
-    <button class="btn btn-tool" onclick="addText()">➕ Custom Text</button>
-    <button class="btn btn-save" onclick="savePdf()">💾 Save Document</button>
+    <button class="btn btn-tool" onclick="document.getElementById('pdf-input').click()">📂 Upload PDF</button>
+    <button class="btn btn-ocr" onclick="startOCR()">🔍 Scan & Edit Text</button>
+    <button class="btn btn-tool" id="undoBtn" onclick="undo()" disabled>↩️ Undo</button>
+    <button class="btn btn-save" onclick="savePdf()">💾 DOWNLOAD EDITED PDF</button>
 </div>
 
 <div id="workspace">
     <div id="canvas-wrap">
-        <canvas id="pdf-canvas"></canvas>
+        <canvas id="pdf-render"></canvas>
     </div>
 </div>
 
 <script>
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
-    let pdfBytes = null;
-    let overlays = [];
+    let originalBytes = null;
+    let history = [];
+    let activeElements = [];
 
-    // --- 1. LOAD PDF ---
+    // --- 1. FILE LOADER ---
     document.getElementById('pdf-input').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        pdfBytes = await file.arrayBuffer();
-        renderPage();
-    };
-
-    async function renderPage() {
-        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        originalBytes = await file.arrayBuffer();
+        
+        const loadingTask = pdfjsLib.getDocument({data: originalBytes});
+        const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({scale: 1.5});
-        const canvas = document.getElementById('pdf-canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height; canvas.width = viewport.width;
-        await page.render({canvasContext: context, viewport: viewport}).promise;
-        document.getElementById('canvas-wrap').style.width = canvas.width+'px';
-    }
-
-    // --- 2. OCR ENGINE (THE MAGIC) ---
-    async function runOCR() {
-        if(!pdfBytes) return alert("Upload a PDF first");
-        const loader = document.getElementById('loading-overlay');
-        loader.style.display = 'block';
-
-        const canvas = document.getElementById('pdf-canvas');
         
-        // Tesseract scans the canvas directly
+        const canvas = document.getElementById('pdf-render');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({canvasContext: context, viewport: viewport}).promise;
+        document.getElementById('canvas-wrap').style.width = canvas.width + 'px';
+    };
+
+    // --- 2. OCR "MAKE EDITABLE" LOGIC ---
+    async function startOCR() {
+        if(!originalBytes) return alert("Please upload a PDF first");
+        document.getElementById('loader').style.display = 'block';
+
+        const canvas = document.getElementById('pdf-render');
         const worker = await Tesseract.createWorker();
         await worker.loadLanguage('eng');
         await worker.initialize('eng');
+        
         const { data } = await worker.recognize(canvas);
         
-        // Create editable boxes for every detected word
         data.words.forEach(word => {
-            const span = document.createElement('div');
-            span.className = 'ocr-box';
-            span.contentEditable = true;
-            span.innerText = word.text;
-            
-            // Position exactly over original text
-            span.style.left = word.bbox.x0 + 'px';
-            span.style.top = word.bbox.y0 + 'px';
-            span.style.width = (word.bbox.x1 - word.bbox.x0) + 'px';
-            span.style.height = (word.bbox.y1 - word.bbox.y0) + 'px';
-            span.style.fontSize = (word.bbox.y1 - word.bbox.y0) * 0.8 + 'px';
+            const field = document.createElement('div');
+            field.className = 'ocr-field';
+            field.contentEditable = true;
+            field.innerText = word.text;
+            field.dataset.original = word.text; // Store original to track changes
 
-            document.getElementById('canvas-wrap').appendChild(span);
-            overlays.push(span);
+            // Absolute Positioning
+            field.style.left = word.bbox.x0 + 'px';
+            field.style.top = word.bbox.y0 + 'px';
+            field.style.width = (word.bbox.x1 - word.bbox.x0) + 'px';
+            field.style.height = (word.bbox.y1 - word.bbox.y0) + 'px';
+            field.style.fontSize = ((word.bbox.y1 - word.bbox.y0) * 0.8) + 'px';
+
+            document.getElementById('canvas-wrap').appendChild(field);
+            activeElements.push(field);
         });
 
         await worker.terminate();
-        loader.style.display = 'none';
-        alert("OCR Complete! You can now click on any text in the document to edit it.");
+        document.getElementById('loader').style.display = 'none';
+        alert("OCR Ready! Click any text on the page to change it.");
     }
 
-    // --- 3. MANUAL TOOLS ---
-    function addMask() {
-        const div = createUI('mask');
-        div.style.width = "100px"; div.style.height = "25px";
-    }
-
-    function addText() {
-        const div = createUI('text-box');
-        div.className += ' ocr-box'; // Use same styling
-        div.style.color = 'black';
-        div.innerText = "New Text";
-    }
-
-    function createUI(type) {
-        const div = document.createElement('div');
-        div.className = `overlay ${type}`;
-        div.dataset.type = type;
-        div.style.left = "50px"; div.style.top = "50px";
-        
-        if(type === 'text-box') {
-            div.contentEditable = true;
-        } else {
-            const rs = document.createElement('div');
-            rs.className = 'resizer';
-            div.appendChild(rs);
-            setupResize(div, rs);
-        }
-
-        document.getElementById('canvas-wrap').appendChild(div);
-        setupDrag(div);
-        overlays.push(div);
-        return div;
-    }
-
-    // --- 4. INTERACTION ---
-    function setupDrag(el) {
-        el.onmousedown = (e) => {
-            if(e.target.className === 'resizer') return;
-            let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
-            document.onmousemove = (e) => { el.style.left = (e.clientX-ox)+'px'; el.style.top = (e.clientY-oy)+'px'; };
-            document.onmouseup = () => document.onmousemove = null;
-        };
-    }
-
-    function setupResize(el, rs) {
-        rs.onmousedown = (e) => {
-            e.stopPropagation();
-            document.onmousemove = (e) => {
-                el.style.width = (e.clientX - el.getBoundingClientRect().left)+'px';
-                el.style.height = (e.clientY - el.getBoundingClientRect().top)+'px';
-            };
-            document.onmouseup = () => document.onmousemove = null;
-        };
-    }
-
-    // --- 5. SAVE ---
+    // --- 3. AUTO-APPLY SAVE LOGIC ---
     async function savePdf() {
-        if(!pdfBytes) return;
+        if(!originalBytes) return;
         document.body.classList.add('exporting');
+
         try {
-            const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-            const font = await doc.embedFont(StandardFonts.Helvetica);
-            const page = doc.getPages()[0];
+            const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
+            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const page = pdfDoc.getPages()[0];
             const { width, height } = page.getSize();
-            const canv = document.getElementById('pdf-canvas');
-            const sx = width / canv.width, sy = height / canv.height;
+            const canvas = document.getElementById('pdf-render');
+            
+            const sx = width / canvas.width;
+            const sy = height / canvas.height;
 
-            for (let el of overlays) {
-                const r = el.getBoundingClientRect();
-                const cr = canv.getBoundingClientRect();
-                const px = (r.left - cr.left) * sx;
-                const py = height - ((r.top - cr.top) * sy) - (r.height * sy);
+            activeElements.forEach(el => {
+                // ONLY apply if the text was actually changed
+                if (el.innerText !== el.dataset.original) {
+                    const rect = el.getBoundingClientRect();
+                    const canvRect = canvas.getBoundingClientRect();
+                    
+                    const x = (rect.left - canvRect.left) * sx;
+                    const y = height - ((rect.top - canvRect.top) * sy) - (rect.height * sy);
 
-                if(el.classList.contains('mask')) {
-                    page.drawRectangle({ x: px, y: py, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
-                } else {
-                    // Draw White background under edited OCR text to hide original
-                    page.drawRectangle({ x: px, y: py, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
-                    page.drawText(el.innerText, { x: px, y: py + 2, size: (r.height * sy) * 0.8, font: font, color: rgb(0,0,0) });
+                    // 1. Draw white box to "delete" the old text
+                    page.drawRectangle({
+                        x: x, y: y,
+                        width: rect.width * sx,
+                        height: rect.height * sy,
+                        color: rgb(1, 1, 1)
+                    });
+
+                    // 2. Draw the NEW text in its place
+                    page.drawText(el.innerText, {
+                        x: x,
+                        y: y + (2 * sy),
+                        size: (rect.height * sy) * 0.8,
+                        font: font,
+                        color: rgb(0, 0, 0)
+                    });
                 }
-            }
+            });
 
-            const out = await doc.save();
-            const blob = new Blob([out], {type: 'application/pdf'});
+            const savedBytes = await pdfDoc.save();
+            const blob = new Blob([savedBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob); link.download = "OIH_OCR_Edited.pdf"; link.click();
-        } catch(e) { console.error(e); alert("Save Error"); }
-        finally { document.body.classList.remove('exporting'); }
+            link.href = URL.createObjectURL(blob);
+            link.download = "OIH_OCR_Synced.pdf";
+            link.click();
+
+        } catch (err) {
+            console.error(err);
+            alert("Save failed. Try refreshing.");
+        } finally {
+            document.body.classList.remove('exporting');
+        }
+    }
+
+    function undo() {
+        if(!activeElements.length) return;
+        const el = activeElements.pop();
+        el.remove();
     }
 </script>
 </body>
