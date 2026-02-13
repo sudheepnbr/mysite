@@ -2,48 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Pro - Performance Build</title>
+    <title>OIH PDF - Stable OCR</title>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     
     <style>
-        :root { --gold: #c9a035; --dark: #0d0d0d; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #111; color: white; }
-        
-        .navbar { background: #000; padding: 12px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 10px; position: sticky; top: 0; z-index: 1000; }
-        .btn { padding: 10px 18px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        :root { --gold: #c9a035; }
+        body { margin: 0; font-family: sans-serif; background: #111; color: white; }
+        .navbar { background: #000; padding: 15px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 15px; position: sticky; top:0; z-index:100; }
+        .btn { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
         .btn-ocr { background: #4f46e5; color: white; }
         .btn-save { background: #10b981; color: white; }
-        .btn-load { background: var(--gold); color: black; }
+        
+        #workspace { padding: 40px; display: flex; justify-content: center; }
+        #canvas-wrap { position: relative; background: white; border: 1px solid #444; }
+        canvas { display: block; }
 
-        #workspace { padding: 40px; background: #1e1e1e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
-        #canvas-wrap { position: relative; display: inline-block; background: white; box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
-        canvas { display: block; max-width: 100%; height: auto; }
-
-        /* Editable Layer */
+        /* FIXED BOX STYLING */
         .editable-field { 
-            position: absolute; color: black; background: white; border: 1px solid transparent;
-            outline: none; overflow: hidden; display: flex; align-items: center; z-index: 10;
+            position: absolute; 
+            color: black; 
+            background: rgba(255,255,255,0.8); 
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            outline: none;
+            padding: 2px;
+            line-height: 1.2;
+            overflow: visible;
         }
-        .editable-field:hover { border: 1px dashed var(--gold); background: #f0f0f0; }
-        .editable-field:focus { border: 1px solid #4f46e5; background: white; z-index: 100; }
-
-        #loader { display: none; margin: 10px; color: var(--gold); font-weight: bold; }
+        .editable-field:focus { background: white; border: 1px solid var(--gold); z-index: 1000; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
     <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
-    <button class="btn btn-load" onclick="document.getElementById('pdf-input').click()">📂 LOAD PDF</button>
-    <button class="btn btn-ocr" onclick="performOCR()">🔍 CONVERT TO EDITABLE</button>
-    <button class="btn btn-save" onclick="generateFinalPDF()">💾 DOWNLOAD PDF</button>
-    <button class="btn btn-load" onclick="window.print()">🖨️ PRINT</button>
+    <button class="btn" style="background:var(--gold)" onclick="document.getElementById('pdf-input').click()">📂 LOAD</button>
+    <button class="btn btn-ocr" onclick="stableOCR()">🔍 FIX & EDIT TEXT</button>
+    <button class="btn btn-save" onclick="saveFixedPDF()">💾 DOWNLOAD</button>
 </div>
 
 <div id="workspace">
-    <div id="loader">Processing OCR... Please Wait...</div>
     <div id="canvas-wrap">
         <canvas id="pdf-canvas"></canvas>
     </div>
@@ -51,136 +50,79 @@
 
 <script>
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
-    let originalPdfBytes = null;
-    let fieldHistory = [];
+    let pdfData = null;
+    let fields = [];
 
-    // --- LOAD PDF ---
     document.getElementById('pdf-input').onchange = async (e) => {
         const file = e.target.files[0];
-        if(!file) return;
-        originalPdfBytes = await file.arrayBuffer();
-        
-        const pdf = await pdfjsLib.getDocument({data: originalPdfBytes}).promise;
+        pdfData = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({scale: 1.5});
-        
+        const vp = page.getViewport({scale: 2.0}); // Higher scale for better OCR
         const canvas = document.getElementById('pdf-canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        await page.render({canvasContext: context, viewport: viewport}).promise;
+        canvas.height = vp.height; canvas.width = vp.width;
+        await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
         document.getElementById('canvas-wrap').style.width = canvas.width + 'px';
-        document.getElementById('canvas-wrap').style.height = canvas.height + 'px';
     };
 
-    // --- MEMORY OPTIMIZED OCR ---
-    async function performOCR() {
-        if(!originalPdfBytes) return alert("Load PDF first");
-        const loader = document.getElementById('loader');
-        loader.style.display = 'block';
-
-        const canvas = document.getElementById('pdf-canvas');
-        // Initialize worker locally to ensure it cleans up memory
+    async function stableOCR() {
+        if(!pdfData) return;
         const worker = await Tesseract.createWorker();
         await worker.loadLanguage('eng');
         await worker.initialize('eng');
         
-        const { data } = await worker.recognize(canvas);
+        // We use 'blocks' instead of 'words' to prevent the page from looking messy
+        const { data } = await worker.recognize(document.getElementById('pdf-canvas'));
         
-        data.words.forEach(word => {
+        data.blocks.forEach(block => {
+            if(block.text.trim().length < 2) return; // Skip noise/dots
+
             const el = document.createElement('div');
             el.className = 'editable-field';
             el.contentEditable = true;
-            el.innerText = word.text;
-            el.dataset.old = word.text;
+            el.innerText = block.text;
+            el.dataset.old = block.text;
 
-            el.style.left = word.bbox.x0 + 'px';
-            el.style.top = word.bbox.y0 + 'px';
-            el.style.width = (word.bbox.x1 - word.bbox.x0) + 'px';
-            el.style.height = (word.bbox.y1 - word.bbox.y0) + 'px';
-            el.style.fontSize = ((word.bbox.y1 - word.bbox.y0) * 0.8) + 'px';
+            el.style.left = block.bbox.x0 + 'px';
+            el.style.top = block.bbox.y0 + 'px';
+            el.style.width = (block.bbox.x1 - block.bbox.x0) + 'px';
+            // height is auto to handle multi-line edits
+            el.style.fontSize = "14px"; 
 
             document.getElementById('canvas-wrap').appendChild(el);
-            fieldHistory.push(el);
+            fields.push(el);
+        });
+        await worker.terminate();
+        alert("OCR Fixed. Text is grouped by blocks now.");
+    }
+
+    async function saveFixedPDF() {
+        const doc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const page = doc.getPages()[0];
+        const { width, height } = page.getSize();
+        const canvas = document.getElementById('pdf-canvas');
+        const sx = width / canvas.width, sy = height / canvas.height;
+
+        fields.forEach(el => {
+            if(el.innerText !== el.dataset.old) {
+                const r = el.getBoundingClientRect();
+                const cr = canvas.getBoundingClientRect();
+                const x = (r.left - cr.left) * sx;
+                const y = height - ((r.top - cr.top) * sy) - (r.height * sy);
+
+                page.drawRectangle({ x, y, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
+                page.drawText(el.innerText, { x, y: y + 2, size: 10, font, color: rgb(0,0,0) });
+            }
         });
 
-        await worker.terminate(); // KILL WORKER TO FREE MEMORY
-        loader.style.display = 'none';
-        alert("OCR Complete. Fields are now editable.");
-    }
-
-    // --- STREAM-BASED SAVE (Fixes 'Save not working') ---
-    async function generateFinalPDF() {
-        if(!originalPdfBytes) return;
-
-        try {
-            const pdfDoc = await PDFDocument.load(originalPdfBytes, { ignoreEncryption: true });
-            const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-            const page = pdfDoc.getPages()[0];
-            const { width, height } = page.getSize();
-            const canvas = document.getElementById('pdf-canvas');
-            
-            const sx = width / canvas.width;
-            const sy = height / canvas.height;
-
-            fieldHistory.forEach(el => {
-                if (el.innerText !== el.dataset.old) {
-                    const rect = el.getBoundingClientRect();
-                    const canvRect = canvas.getBoundingClientRect();
-                    
-                    const x = (rect.left - canvRect.left) * sx;
-                    const y = height - ((rect.top - canvRect.top) * sy) - (rect.height * sy);
-
-                    // Whiteout
-                    page.drawRectangle({
-                        x: x, y: y,
-                        width: rect.width * sx,
-                        height: rect.height * sy,
-                        color: rgb(1, 1, 1)
-                    });
-
-                    // New Text
-                    page.drawText(el.innerText, {
-                        x: x,
-                        y: y + (1.5 * sy),
-                        size: (rect.height * sy) * 0.75,
-                        font: font,
-                        color: rgb(0, 0, 0)
-                    });
-                }
-            });
-
-            // Use 'Uint8Array' for more stable downloading
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            
-            // Force Download via invisible link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = "OIH_Fixed_Save.pdf";
-            document.body.appendChild(a);
-            a.click();
-            
-            // Cleanup
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-        } catch (err) {
-            console.error("Save Error:", err);
-            alert("Save failed. Try closing other tabs to free up memory.");
-        }
+        const bytes = await doc.save();
+        const blob = new Blob([bytes], {type: 'application/pdf'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "Fixed_Document.pdf";
+        a.click();
     }
 </script>
-
-<style media="print">
-    /* Fix for Print Preview */
-    .navbar, #loader { display: none !important; }
-    #workspace { padding: 0 !important; background: white !important; }
-    .editable-field { border: none !important; }
-</style>
-
 </body>
 </html>
