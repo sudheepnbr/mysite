@@ -2,251 +2,302 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OIH Premium Suite – v87.0.5</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+<title>OIH ID Designer – v87.1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
 
 <style>
 :root { 
     --gold: #c9a035; 
-    --gold-glow: rgba(201, 160, 53, 0.4);
-    --bg-dark: #050505;
-    --panel-bg: rgba(15, 15, 15, 0.95);
+    --bg-dark: #000000;
+    --panel-bg: rgba(20, 20, 20, 0.95);
+    --input-fill: #e0f2fe; 
+    --danger: #ef4444;
 }
 
-body { 
-    margin: 0; font-family: 'Inter', sans-serif; 
-    background: var(--bg-dark); color: #fff; 
-    overflow-x: hidden; touch-action: none;
-    background-image: radial-gradient(circle at 50% 50%, #111 0%, #050505 100%);
+body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #fff; overflow-x: hidden; touch-action: none; }
+
+/* --- AI SCANNER LOADER --- */
+#ai-loader {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+    z-index: 20000; flex-direction: column; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px);
 }
+.scanner-container { position: relative; width: 200px; height: 150px; display: flex; align-items: center; justify-content: center; }
+.scanner-logo { width: 120px; opacity: 0.4; }
+.scanner-line { position: absolute; width: 160px; height: 3px; background: var(--gold); box-shadow: 0 0 15px var(--gold), 0 0 30px var(--gold); z-index: 10; animation: scanMove 2s ease-in-out infinite; }
+@keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+#prog-text { color: var(--gold); font-weight: 800; font-size: 36px; margin-top: 20px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(201, 160, 53, 0.4); }
 
 /* --- LOGIN SCREEN --- */
-#login-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #000; }
-.login-card { background: rgba(20, 20, 20, 0.9); padding: 50px; border-radius: 30px; border: 1px solid var(--gold); width: 320px; text-align: center; backdrop-filter: blur(20px); }
-.login-card h2 { font-weight: 900; color: var(--gold); letter-spacing: 3px; }
-.login-card input { width: 100%; box-sizing: border-box; padding: 15px; margin-top: 15px; border-radius: 10px; border: 1px solid #333; background: #111; color: #fff; font-weight: 700; }
-.login-btn { width: 100%; margin-top: 25px; padding: 15px; background: var(--gold); border: none; font-weight: 800; cursor: pointer; border-radius: 10px; color: #000; }
+#login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; align-items: center; justify-content: center; background: #000; }
+.login-card { background: rgba(15, 15, 15, 0.98); padding: 40px; border-radius: 24px; border: 1px solid var(--gold); width: 380px; text-align: center; }
+.login-card input { width: 100%; box-sizing: border-box; display: block; padding: 14px; margin-top: 15px; border-radius: 8px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; color: #000; }
+.login-btn { width: 100%; margin-top: 25px; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; }
 
-/* --- MAIN UI --- */
-.wrap { display: none; max-width: 1400px; margin: auto; padding: 40px 20px; grid-template-columns: 360px 1fr; gap: 40px; padding-bottom: 180px; }
-.panel { background: var(--panel-bg); border-radius: 24px; padding: 30px; border: 1px solid #222; position: sticky; top: 20px; height: fit-content; }
-.section-title { font-size: 10px; font-weight: 800; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; display: block; }
-.input-group { margin-bottom: 20px; }
-.input-group label { display: block; font-size: 10px; color: #666; font-weight: 700; margin-bottom: 5px; }
-.input-group input { width: 100%; padding: 12px; box-sizing: border-box; border-radius: 8px; border: 1px solid #222; background: #000; color: #fff; font-weight: 600; }
+/* --- UI LAYOUT --- */
+.wrap { display: none; max-width: 1300px; margin: auto; padding: 20px; grid-template-columns: 350px 1fr; gap: 25px; padding-bottom: 150px; }
+.panel { background: var(--panel-bg); border-radius: 20px; padding: 25px; height: fit-content; position: sticky; top: 20px; border: 1px solid rgba(255,255,255,0.1); }
+.ui-logo { width: 100%; max-height: 80px; object-fit: contain; margin-bottom: 10px; display: block; }
+label { font-size: 10px; font-weight: 800; margin-top: 15px; display: block; text-transform: uppercase; color: #888; }
+.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); border-radius: 8px; margin-top: 5px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; margin-top: 5px; box-sizing: border-box; background: var(--input-fill); border: 2px solid var(--gold); font-weight: 700; }
+.ai-btn { width: 100%; margin-top: 10px; padding: 12px; border-radius: 10px; background: #6366f1; color: #fff; border: none; cursor: pointer; font-weight: 700; }
+.action-row { display: flex; gap: 10px; margin-top: 20px; }
+.icon-btn { flex: 1; height: 45px; border-radius: 10px; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
 
-canvas { width: 100%; border-radius: 15px; border: 1px solid #1a1a1a; margin-bottom: 30px; background: #000; cursor: crosshair; }
+canvas { width: 100%; max-width: 1011px; border-radius: 14px; background: #1a1a1a; display: block; border: 1px solid #333; margin-bottom: 20px; }
 
-/* --- TICKER & PREVIEW LOGIC --- */
+/* --- HISTORY TICKER & ZOOM --- */
 #ticker-bar { 
     position: fixed; bottom: 0; left: 0; width: 100%; 
-    background: rgba(5, 5, 5, 0.95); backdrop-filter: blur(15px);
-    border-top: 2px solid var(--gold); height: 130px; 
-    display: none; align-items: center; z-index: 9999;
+    background: rgba(10, 10, 10, 0.95); border-top: 3px solid var(--gold); 
+    height: 120px; display: none; align-items: center; z-index: 10000; 
 }
 .ticker-label { background: var(--gold); color: #000; padding: 0 20px; height: 100%; display: flex; align-items: center; font-weight: 900; font-size: 12px; text-align: center; }
-.marquee { display: flex; align-items: center; animation: scroll 40s linear infinite; }
+.marquee-container { flex: 1; overflow: hidden; display: flex; align-items: center; }
+.marquee { display: flex; animation: scroll 40s linear infinite; }
 .marquee:hover { animation-play-state: paused; }
 
 .card-thumb { 
-    height: 90px; width: 140px; background: #000; border-radius: 8px; 
-    margin: 0 15px; border: 1px solid #333; overflow: visible; 
-    position: relative; flex-shrink: 0; cursor: pointer; transition: 0.3s;
+    height: 85px; width: 135px; background: #000; border-radius: 8px; 
+    margin: 0 15px; border: 1px solid #333; flex-shrink: 0; 
+    cursor: pointer; position: relative; transition: 0.3s;
 }
-
-/* BIG PREVIEW ON HOVER */
-.card-thumb:hover { border-color: var(--gold); z-index: 10000; }
+.card-thumb:hover { border-color: var(--gold); transform: scale(1.05); }
 .card-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
 
-/* The Zoom Pop-up */
-.card-thumb .zoom-view {
-    position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%) scale(0);
-    width: 300px; height: 190px; background: #000; border: 2px solid var(--gold);
-    border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,1);
-    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    pointer-events: none; overflow: hidden;
+/* HD ZOOM PREVIEW */
+.card-thumb .zoom-hd {
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%) scale(0);
+    width: 320px; height: 200px; background: #000; border: 2px solid var(--gold);
+    border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    transition: 0.25s ease-out; pointer-events: none; z-index: 20000;
 }
-.card-thumb:hover .zoom-view { transform: translateX(-50%) scale(1); }
-.zoom-view img { width: 100%; height: 100%; object-fit: contain; }
+.card-thumb:hover .zoom-hd { transform: translateX(-50%) scale(1); }
+.zoom-hd img { width: 100%; height: 100%; object-fit: contain; }
 
-.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 9px; text-align: center; padding: 3px 0; border-radius: 0 0 7px 7px; }
+.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 9px; text-align: center; padding: 2px 0; font-weight: 800; border-radius: 0 0 7px 7px; }
 
 @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
 @media print {
-    @page { size: 54mm 85.6mm; margin: 0; }
-    #login-overlay, .panel, #ticker-bar { display: none !important; }
-    canvas { width: 85.6mm !important; height: 54mm !important; transform: rotate(90deg) translate(0, -54mm); transform-origin: top left; }
+    @page { margin: 0; size: auto; }
+    #login-overlay, .panel, #ai-loader, #ticker-bar { display: none !important; }
+    .wrap { display: block !important; }
+    #fc { display: block !important; width: 100% !important; page-break-after: always !important; }
+    #bc { display: block !important; width: 100% !important; }
 }
 </style>
 </head>
 <body>
 
+<div id="ai-loader">
+    <div class="scanner-container"><div class="scanner-line"></div><img src="ui_logo.png" class="scanner-logo"></div>
+    <div id="prog-text">0%</div>
+</div>
+
 <div id="login-overlay">
     <div class="login-card">
-        <h2>OIH ADMIN</h2>
-        <input type="text" id="user" placeholder="SYSTEM ID">
-        <input type="password" id="pass" placeholder="ACCESS KEY">
-        <button class="login-btn" onclick="tryLogin()">INITIALIZE</button>
+        <h2 style="color:var(--gold); font-weight:800;">OIH Premium ID Suite</h2>
+        <input type="text" id="user-input" placeholder="Username">
+        <input type="password" id="pass-input" placeholder="Password">
+        <button class="login-btn" onclick="checkLogin()">LOGIN</button>
     </div>
 </div>
 
-<div class="wrap" id="app">
-    <div class="panel">
-        <span class="section-title">Redesign Panel</span>
-        <div style="background: #111; border: 1px dashed var(--gold); padding: 15px; border-radius: 10px; text-align: center; cursor: pointer; margin-bottom: 20px;" onclick="document.getElementById('imgIn').click()">CHANGE PHOTO</div>
-        <input type="file" id="imgIn" style="display:none" onchange="previewImg(event)">
-        
-        <div class="input-group"><label>Full Name</label><input type="text" id="name" oninput="render()"></div>
-        <div class="input-group"><label>Designation</label><input type="text" id="job" oninput="render()"></div>
-        <div class="input-group"><label>ID Number</label><input type="text" id="idnum" oninput="render()"></div>
-
-        <div style="display:flex; gap:10px;">
-            <button onclick="saveCard()" style="flex:1; padding:15px; background:#10b981; border:none; border-radius:10px; color:#fff; font-weight:800; cursor:pointer;">💾 SAVE</button>
-            <button onclick="window.print()" style="flex:1; padding:15px; background:#3b82f6; border:none; border-radius:10px; color:#fff; font-weight:800; cursor:pointer;">🖨️ PRINT</button>
-            <button id="lBtn" onclick="toggleLock()" style="width:50px; background:#222; border:1px solid #444; color:#fff; cursor:pointer; border-radius:10px;">🔒</button>
-        </div>
-        <p style="font-size: 10px; color: #444; margin-top: 15px; text-align: center;">TIP: Click history cards to reload data</p>
+<div class="wrap" id="designer-ui">
+  <div class="panel">
+    <div class="header-area" ondblclick="revealLock()">
+        <img src="ui_logo.png" class="ui-logo">
+        <h1>OIH DESIGNER</h1>
     </div>
 
-    <div>
-        <canvas id="front"></canvas>
-        <canvas id="back"></canvas>
+    <label>Photo</label>
+    <div class="file-box" onclick="document.getElementById('photoInput').click()">Choose Photo...</div>
+    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="loadPhoto(event)">
+    <button class="ai-btn" onclick="removeBackgroundAI()">✨Remove Background</button>
+    
+    <label>Full Name</label><input type="text" id="fullname" oninput="handleNameInput(this)">
+    <label>Title</label><input type="text" id="dg" oninput="draw()">
+    <label>ID Number</label><input type="text" id="idn" oninput="draw()">
+
+    <div class="action-row">
+        <button class="icon-btn" style="background:#10b981" onclick="saveAsPNG()">💾</button>
+        <button class="icon-btn" style="background:#3b82f6" onclick="window.print()">🖨️</button>
+        <button class="icon-btn" id="lockBtn" style="background:#374151; display:none;" onclick="toggleLock()"><span id="lockIcon">🔒</span></button>
+        <button class="icon-btn" style="background:#ef4444" onclick="logout()">🚪</button>
     </div>
+  </div>
+
+  <div id="print-area">
+    <canvas id="fc"></canvas>
+    <canvas id="bc"></canvas>
+  </div>
 </div>
 
 <div id="ticker-bar">
-    <div class="ticker-label">HISTORY</div>
-    <div class="marquee" id="ticker-track"></div>
+    <div class="ticker-label">SESSION LOG</div>
+    <div class="marquee-container"><div class="marquee" id="ticker-track"></div></div>
 </div>
 
 <script>
-const fv = document.getElementById('front'), bv = document.getElementById('back');
-const fctx = fv.getContext('2d'), bctx = bv.getContext('2d');
-fv.width = bv.width = 1011; fv.height = bv.height = 638;
+const fc = document.getElementById("fc"), bc = document.getElementById("bc"),
+      fn = document.getElementById("fullname"), dg = document.getElementById("dg"), idn = document.getElementById("idn");
+const fctx = fc.getContext("2d"), bctx = bc.getContext("2d");
+fc.width = bc.width = 1011; fc.height = bc.height = 638;
 
-let assets = { f: new Image(), b: new Image(), ov: new Image(), ph: null };
-assets.f.src = 'front_base.png'; assets.b.src = 'back_base.png'; assets.ov.src = 'gold_overlay.png';
-assets.f.onload = assets.b.onload = assets.ov.onload = render;
+let imgs = { front: new Image(), overlay: new Image(), back: new Image(), photo: null };
+let isLocked = true, photoRatio = 1, photoPos = { x: 550, y: 70, w: 400, h: 500 };
+let overlayPos = { x: 440, y: 16, w: 0, h: 638 };
 
-let phPos = { x: 550, y: 70, w: 400, h: 500 }, isLocked = true, phRatio = 1, active = null, mode = null, start = {};
+imgs.front.src = "./front_base.png";
+imgs.overlay.src = "./gold_overlay.png";
+imgs.back.src = "./back_base.png";
 
-function render() {
-    fctx.clearRect(0,0,1011,638);
-    fctx.drawImage(assets.f, -24, -24, 1059, 678);
-    if(assets.ph) fctx.drawImage(assets.ph, phPos.x, phPos.y, phPos.w, phPos.h);
-    fctx.drawImage(assets.ov, 440, 16, 600, 638);
+imgs.overlay.onload = () => { overlayPos.w = (imgs.overlay.width * (638/imgs.overlay.height)) * 1.1; draw(); };
+imgs.front.onload = imgs.back.onload = draw;
+
+function draw() {
+    fctx.clearRect(0, 0, 1011, 638);
+    if(imgs.front.complete) fctx.drawImage(imgs.front, -24, -24, 1011+48, 638+40);
+    if(imgs.photo) fctx.drawImage(imgs.photo, photoPos.x, photoPos.y, photoPos.w, photoPos.h);
+    if(imgs.overlay.complete) fctx.drawImage(imgs.overlay, overlayPos.x, overlayPos.y, overlayPos.w, overlayPos.h);
     
     fctx.fillStyle = "#000";
-    fctx.font = "900 46px Inter"; fctx.fillText(document.getElementById('name').value.toUpperCase(), 70, 465);
-    fctx.font = "400 34px Inter"; fctx.fillText(document.getElementById('job').value, 70, 525);
-    fctx.font = "700 30px Inter"; fctx.fillText("ID NO: " + document.getElementById('idnum').value, 70, 580);
+    if(fn.value) fillTextSmart(fctx, fn.value, 70, 465, 450, 46, "800");
+    if(dg.value) fillTextSmart(fctx, dg.value, 70, 525, 450, 34, "700");
+    if(idn.value) fillTextSmart(fctx, "ID No - " + idn.value, 70, 580, 450, 30, "700");
 
     if(!isLocked) {
         fctx.strokeStyle = "gold"; fctx.lineWidth = 2;
-        fctx.strokeRect(phPos.x, phPos.y, phPos.w, phPos.h);
-        fctx.fillStyle = "gold"; fctx.fillRect(phPos.x+phPos.w-15, phPos.y+phPos.h-15, 15, 15);
+        fctx.strokeRect(photoPos.x, photoPos.y, photoPos.w, photoPos.h);
     }
-    bctx.clearRect(0,0,1011,638);
-    bctx.drawImage(assets.b, -24, 0, 1059, 678);
+    bctx.clearRect(0, 0, 1011, 638);
+    if(imgs.back.complete) bctx.drawImage(imgs.back, -24, 0, 1011+48, 638+40);
 }
 
-// HISTORY & REDESIGN LOGIC
+function fillTextSmart(ctx, text, x, y, maxW, baseSize, weight) {
+    let size = baseSize;
+    ctx.font = `${weight} ${size}px Inter`;
+    while (ctx.measureText(text).width > maxW && size > 10) { size--; ctx.font = `${weight} ${size}px Inter`; }
+    ctx.fillText(text, x, y);
+}
+
+// --- REDESIGN LOGIC ---
 function refreshTicker() {
-    const list = JSON.parse(localStorage.getItem('oih_pro_history')) || [];
+    const list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
     const track = document.getElementById('ticker-track');
-    if(list.length === 0) { track.innerHTML = ""; return; }
+    if(list.length === 0) return;
+    document.getElementById('ticker-bar').style.display = 'flex';
     
-    // Create items. We store Full Data so we can redesign.
     const html = list.map((item, idx) => `
-        <div class="card-thumb" onclick="loadForRedesign(${idx})">
-            <div class="zoom-view"><img src="${item.img}"></div>
-            <img src="${item.img}">
+        <div class="card-thumb" onclick="loadFromHistory(${idx})">
+            <div class="zoom-hd"><img src="${item.hd}"></div>
+            <img src="${item.thumb}">
             <div class="card-thumb-tag">${item.id}</div>
         </div>
     `).join('');
-    
-    track.innerHTML = html + html; // Simple double for loop
+    track.innerHTML = html + html;
 }
 
-function loadForRedesign(idx) {
-    const list = JSON.parse(localStorage.getItem('oih_pro_history')) || [];
-    const data = list[idx];
-    if(!data) return;
-    
-    document.getElementById('name').value = data.name || "";
-    document.getElementById('job').value = data.job || "";
-    document.getElementById('idnum').value = data.id || "";
-    
+function loadFromHistory(idx) {
+    const list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
+    const data = list[idx]; if(!data) return;
+    fn.value = data.name; dg.value = data.job; idn.value = data.id;
     if(data.phRaw) {
-        const i = new Image();
-        i.onload = () => { assets.ph = i; phRatio = i.width/i.height; render(); };
+        const i = new Image(); i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; draw(); };
         i.src = data.phRaw;
     }
-    render();
+    draw();
 }
 
-function saveCard() {
-    render();
-    const snap = document.createElement('canvas'); snap.width = 140; snap.height = 90;
-    snap.getContext('2d').drawImage(fv, 0, 0, 140, 90);
+function saveAsPNG() {
+    draw(); // Ensure clean draw
+    const nameStr = (fn.value || "ID").trim().replace(/\s+/g, '_');
+    const idStr = (idn.value || "000").trim().replace(/\s+/g, '_');
+    const fullData = fc.toDataURL("image/png");
+
+    // History Entry
+    const snap = document.createElement('canvas'); snap.width = 135; snap.height = 85;
+    snap.getContext('2d').drawImage(fc, 0, 0, 135, 85);
     
-    let list = JSON.parse(localStorage.getItem('oih_pro_history')) || [];
-    
-    // Save full data for restoration later
-    const entry = {
-        id: document.getElementById('idnum').value,
-        name: document.getElementById('name').value,
-        job: document.getElementById('job').value,
-        img: snap.toDataURL('image/jpeg', 0.6),
-        phRaw: assets.ph ? assets.ph.src : null
-    };
-    
-    list.unshift(entry);
+    let list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
+    list.unshift({
+        id: idn.value || 'N/A', name: fn.value, job: dg.value,
+        thumb: snap.toDataURL('image/jpeg', 0.6),
+        hd: fullData, // For Zoom
+        phRaw: imgs.photo ? imgs.photo.src : null
+    });
     if(list.length > 10) list.pop();
-    localStorage.setItem('oih_pro_history', JSON.stringify(list));
+    localStorage.setItem('oih_vault_v1', JSON.stringify(list));
     refreshTicker();
 
+    // Trigger Download ONCE
     const link = document.createElement('a');
-    link.download = 'OIH_'+entry.id+'.png'; link.href = fv.toDataURL(); link.click();
+    link.download = `${nameStr}_${idStr}.png`;
+    link.href = fullData;
+    link.click();
 }
 
-function tryLogin() {
-    if(document.getElementById('user').value === 'admin') {
+// UI HANDLERS
+function checkLogin() {
+    if(document.getElementById('user-input').value === 'admin' && document.getElementById('pass-input').value === 'oih2026') {
         document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('app').style.display = 'grid';
-        document.getElementById('ticker-bar').style.display = 'flex';
-        refreshTicker();
+        document.getElementById('designer-ui').style.display = 'grid';
+        sessionStorage.setItem('oih_auth', 'true');
+        refreshTicker(); draw();
     }
 }
+function logout() { sessionStorage.removeItem('oih_auth'); location.reload(); }
+function revealLock() { const b = document.getElementById("lockBtn"); b.style.display = (b.style.display==="flex") ? "none" : "flex"; }
+function toggleLock() { isLocked = !isLocked; document.getElementById("lockIcon").innerText = isLocked ? "🔒" : "🔓"; draw(); }
+function handleNameInput(el) { el.value = el.value.split(" ").map(w => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase()).join(" "); draw(); }
 
-function toggleLock() { isLocked = !isLocked; document.getElementById('lBtn').innerHTML = isLocked ? "🔒" : "🔓"; render(); }
-
-fv.onmousedown = (e) => {
-    if(isLocked) return;
-    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
-    if(x > phPos.x+phPos.w-40 && y > phPos.y+phPos.h-40) { active = phPos; mode = 'sz'; }
-    else if(x > phPos.x && x < phPos.x+phPos.w && y > phPos.y && y < phPos.y+phPos.h) { active = phPos; mode = 'mv'; }
-    if(active) start = { x: x - active.x, y: y - active.y, w: active.w, h: active.h, px: x };
-};
-window.onmousemove = (e) => {
-    if(!active) return;
-    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
-    if(mode === 'mv') { active.x = x - start.x; active.y = y - start.y; }
-    else { active.w = Math.max(50, start.w + (x - start.px)); active.h = active.w/phRatio; }
-    render();
-};
-window.onmouseup = () => active = null;
-
-function previewImg(e) {
+function loadPhoto(e) {
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = ev => {
         const i = new Image();
-        i.onload = () => { assets.ph = i; phRatio = i.width/i.height; phPos.h = phPos.w/phRatio; render(); };
+        i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; photoPos.h = photoPos.w/photoRatio; draw(); };
         i.src = ev.target.result;
     };
     reader.readAsDataURL(e.target.files[0]);
 }
+
+async function removeBackgroundAI() {
+    const file = document.getElementById('photoInput').files[0]; if(!file) return;
+    const loader = document.getElementById('ai-loader'), pText = document.getElementById('prog-text');
+    loader.style.display = 'flex';
+    let p = 0; const iv = setInterval(() => { if(p<90) { p+=5; pText.innerText = p+'%'; } }, 200);
+    try {
+        const fd = new FormData(); fd.append('image_file', file);
+        const res = await fetch('https://api.remove.bg/v1.0/removebg', { method: 'POST', headers: { 'X-Api-Key': "c9sbqbPTLtacLw1rZbm4KjHE" }, body: fd });
+        if(res.ok) {
+            const b = await res.blob(); const i = new Image();
+            i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; photoPos.h = photoPos.w/photoRatio; draw(); loader.style.display='none'; };
+            i.src = URL.createObjectURL(b);
+        }
+    } catch (e) { loader.style.display='none'; }
+    clearInterval(iv);
+}
+
+// Interaction
+let target = null, start = {};
+const getP = (e, c) => { const r = c.getBoundingClientRect(); return { x: (e.clientX - r.left)*(1011/r.width), y: (e.clientY - r.top)*(638/r.height) }; };
+fc.onmousedown = (e) => {
+    const p = getP(e, fc);
+    if(p.x > photoPos.x && p.x < photoPos.x+photoPos.w && p.y > photoPos.y && p.y < photoPos.y+photoPos.h) {
+        target = photoPos; start = { x: p.x - target.x, y: p.y - target.y };
+    }
+};
+window.onmousemove = (e) => {
+    if(!target) return;
+    const p = getP(e, fc);
+    target.x = p.x - start.x; target.y = p.y - start.y;
+    draw();
+};
+window.onmouseup = () => target = null;
+
+window.onload = () => { if(sessionStorage.getItem('oih_auth') === 'true') { checkLogin(); } };
 </script>
 </body>
 </html>
