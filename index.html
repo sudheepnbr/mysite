@@ -2,38 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Pro - Ultra Fix</title>
+    <title>OIH PDF Pro - Final Stability Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
         :root { --gold: #c9a035; --dark: #121212; --accent: #10b981; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: white; overflow: hidden; }
+        body { margin: 0; font-family: sans-serif; background: #1a1a1a; color: white; overflow: hidden; }
         
-        /* Toolbar */
-        .menu { background: #1a1a1a; padding: 12px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 8px; z-index: 1000; position: relative; }
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; transition: 0.2s; font-size: 13px; }
+        .menu { background: #000; padding: 12px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 10px; position: relative; z-index: 100; }
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 13px; }
         .btn-tool { background: var(--gold); color: #000; }
-        .btn-action { background: #444; color: #fff; }
+        .btn-action { background: #333; color: #fff; }
         .btn-save { background: var(--accent); color: white; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn:disabled { opacity: 0.3; }
 
-        /* Workspace */
-        #viewport { height: calc(100vh - 70px); overflow: auto; padding: 40px; text-align: center; background: #2a2a2a; }
-        #pdf-container { position: relative; display: inline-block; background: white; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        #viewport { height: calc(100vh - 70px); overflow: auto; padding: 40px; background: #222; text-align: center; }
+        #pdf-container { position: relative; display: inline-block; background: white; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
         canvas { display: block; }
 
         /* Overlays */
-        .mask, .text-box { position: absolute; cursor: move; box-sizing: border-box; }
+        .mask, .text-box { position: absolute; cursor: move; }
         .mask { background: white; border: 1px dashed #007bff; min-width: 10px; min-height: 10px; }
-        .text-box { color: black; min-width: 40px; border: 1px dashed var(--gold); padding: 4px; background: rgba(255,255,255,0.6); font-size: 14px; outline: none; line-height: 1; }
+        .text-box { color: black; min-width: 40px; border: 1px dashed var(--gold); padding: 4px; background: rgba(255,255,255,0.7); font-size: 14px; outline: none; white-space: nowrap; }
         
-        /* Helpers */
         .resizer { width: 10px; height: 10px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
-        .del-btn { position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white; font-weight: 800; display: none; }
-        .mask:hover .del-btn, .text-box:hover .del-btn { display: flex; }
+        .del-btn { position: absolute; top: -12px; right: -12px; background: #ff4444; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white; font-weight: bold; opacity: 0; transition: 0.2s; }
+        .mask:hover .del-btn, .text-box:hover .del-btn { opacity: 1; }
 
-        /* Clean Mode */
+        /* Clean mode for Save */
         .exporting .mask, .exporting .text-box { border: none !important; background: transparent !important; }
         .exporting .resizer, .exporting .del-btn { display: none !important; }
     </style>
@@ -42,8 +39,8 @@
 
 <div class="menu">
     <input type="file" id="pdf-file" accept="application/pdf" style="display:none">
-    <button class="btn btn-action" onclick="document.getElementById('pdf-file').click()">📂 Upload PDF</button>
-    <button class="btn btn-tool" onclick="addMask()">⬜ Erase Area</button>
+    <button class="btn btn-action" onclick="document.getElementById('pdf-file').click()">📂 Open PDF</button>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Hide Text</button>
     <button class="btn btn-tool" onclick="addText()">➕ Add Text</button>
     <button class="btn btn-action" id="undoBtn" onclick="undo()" disabled>↩️ Undo</button>
     <button class="btn btn-save" onclick="savePdf()">💾 Save Document</button>
@@ -51,17 +48,17 @@
 
 <div id="viewport">
     <div id="pdf-container">
-        <canvas id="pdf-canvas"></canvas>
+        <canvas id="pdf-render"></canvas>
     </div>
 </div>
 
 <script>
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
     let originalBytes = null;
-    let elements = [];
+    let overlays = [];
     let history = [];
 
-    // --- 1. LOAD SYSTEM ---
+    // --- 1. PDF LOADING ---
     document.getElementById('pdf-file').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -72,7 +69,7 @@
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({scale: 1.5});
         
-        const canvas = document.getElementById('pdf-canvas');
+        const canvas = document.getElementById('pdf-render');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
@@ -83,29 +80,28 @@
         cont.style.height = canvas.height + 'px';
     };
 
-    function addMask() { saveHistory(); createOverlay('mask'); }
-    function addText() { saveHistory(); createOverlay('text-box'); }
+    function addMask() { saveState(); createUI('mask'); }
+    function addText() { saveState(); createUI('text-box'); }
 
-    function createOverlay(type, state = null) {
+    function createUI(type, saved = null) {
         const div = document.createElement('div');
         div.className = type;
         div.dataset.type = type;
-        div.style.left = state ? state.l : "100px";
-        div.style.top = state ? state.t : "100px";
+        div.style.left = saved ? saved.x : "100px";
+        div.style.top = saved ? saved.y : "100px";
         
         const del = document.createElement('div');
         del.className = 'del-btn';
-        del.innerHTML = '×';
-        del.onclick = (e) => { e.stopPropagation(); saveHistory(); div.remove(); elements = elements.filter(x => x !== div); };
+        del.innerHTML = '✕';
+        del.onclick = (e) => { e.stopPropagation(); saveState(); div.remove(); overlays = overlays.filter(o => o !== div); };
         div.appendChild(del);
 
         if(type === 'text-box') {
             div.contentEditable = true;
-            div.innerText = state ? state.txt : "New Data";
-            div.onblur = () => saveHistory();
+            div.innerText = saved ? saved.t : "Edit Me";
         } else {
-            div.style.width = state ? state.w : "100px";
-            div.style.height = state ? state.h : "30px";
+            div.style.width = saved ? saved.w : "100px";
+            div.style.height = saved ? saved.h : "25px";
             const rs = document.createElement('div');
             rs.className = 'resizer';
             div.appendChild(rs);
@@ -114,10 +110,10 @@
 
         document.getElementById('pdf-container').appendChild(div);
         setupDrag(div);
-        elements.push(div);
+        overlays.push(div);
     }
 
-    // --- 2. INTERACTION ---
+    // --- 2. TOOLS ---
     function setupDrag(el) {
         el.onmousedown = (e) => {
             if(e.target.className === 'resizer' || e.target.className === 'del-btn') return;
@@ -126,7 +122,7 @@
                 el.style.left = (e.clientX - sx) + 'px';
                 el.style.top = (e.clientY - sy) + 'px';
             };
-            document.onmouseup = () => { document.onmousemove = null; saveHistory(); };
+            document.onmouseup = () => { document.onmousemove = null; saveState(); };
         };
     }
 
@@ -137,18 +133,16 @@
                 el.style.width = (e.clientX - el.getBoundingClientRect().left) + 'px';
                 el.style.height = (e.clientY - el.getBoundingClientRect().top) + 'px';
             };
-            document.onmouseup = () => { document.onmousemove = null; saveHistory(); };
+            document.onmouseup = () => { document.onmousemove = null; saveState(); };
         };
     }
 
-    function saveHistory() {
-        const data = elements.map(el => ({
-            type: el.dataset.type,
-            l: el.style.left,
-            t: el.style.top,
-            w: el.style.width,
-            h: el.style.height,
-            txt: el.innerText
+    function saveState() {
+        const data = overlays.map(o => ({
+            type: o.dataset.type,
+            x: o.style.left, y: o.style.top,
+            w: o.style.width, h: o.style.height,
+            t: o.innerText
         }));
         history.push(JSON.stringify(data));
         document.getElementById('undoBtn').disabled = false;
@@ -156,62 +150,65 @@
 
     function undo() {
         if(history.length === 0) return;
-        elements.forEach(el => el.remove());
-        elements = [];
+        overlays.forEach(o => o.remove());
+        overlays = [];
         const last = JSON.parse(history.pop());
-        last.forEach(s => createOverlay(s.type, s));
+        last.forEach(s => createUI(s.type, s));
         if(history.length === 0) document.getElementById('undoBtn').disabled = true;
     }
 
-    // --- 3. THE "ULTRA-FIX" SAVE ---
+    // --- 3. THE REPAIRED SAVE LOGIC ---
     async function savePdf() {
-        if(!originalBytes) return alert("Please upload a PDF first.");
+        if(!originalBytes) return alert("Upload PDF first");
         document.body.classList.add('exporting');
 
         try {
-            // Load PDF with ignoreEncryption to handle more files
-            const doc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
-            const font = await doc.embedFont(StandardFonts.HelveticaBold);
-            const page = doc.getPages()[0];
+            // Fix for "Protected" error: use ignoreEncryption
+            const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
+            const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            const page = pdfDoc.getPages()[0];
             const { width, height } = page.getSize();
-            const canvas = document.getElementById('pdf-canvas');
+            const canvas = document.getElementById('pdf-render');
             
-            const sx = width / canvas.width;
-            const sy = height / canvas.height;
+            const factorX = width / canvas.width;
+            const factorY = height / canvas.height;
 
-            for (let el of elements) {
-                const r = el.getBoundingClientRect();
-                const cr = canvas.getBoundingClientRect();
-                const px = (r.left - cr.left) * sx;
-                // Bottom-up Y coordinate fix
-                const py = height - ((r.top - cr.top) * sy) - (el.dataset.type === 'mask' ? (r.height * sy) : (12 * sy));
+            for (let el of overlays) {
+                const rect = el.getBoundingClientRect();
+                const canvRect = canvas.getBoundingClientRect();
+                
+                const posX = (rect.left - canvRect.left) * factorX;
+                // PDF coordinates are bottom-up
+                const posY = height - ((rect.top - canvRect.top) * factorY) - (el.dataset.type === 'mask' ? (rect.height * factorY) : (12 * factorY));
 
                 if(el.dataset.type === 'mask') {
                     page.drawRectangle({
-                        x: px, y: py,
-                        width: r.width * sx,
-                        height: r.height * sy,
-                        color: rgb(1, 1, 1)
+                        x: posX, y: posY,
+                        width: rect.width * factorX,
+                        height: rect.height * factorY,
+                        color: rgb(1, 1, 1) // Whiteout
                     });
                 } else {
                     page.drawText(el.innerText, {
-                        x: px, y: py,
-                        size: 11 * sy,
+                        x: posX, y: posY,
+                        size: 10 * factorY,
                         font: font,
                         color: rgb(0, 0, 0)
                     });
                 }
             }
 
-            const finalBytes = await doc.save();
-            const blob = new Blob([finalBytes], {type: 'application/pdf'});
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "Edited_By_OIH.pdf";
-            link.click();
+            const pdfData = await pdfDoc.save();
+            const blob = new Blob([pdfData], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "OIH_Fixed_Edit.pdf";
+            a.click();
+            
         } catch (err) {
-            console.error(err);
-            alert("Error: This PDF might be protected or too large.");
+            console.error("Save Crash:", err);
+            alert("Error: If the PDF is a secure Government ID or Bank statement, it cannot be saved directly. Try 'Print to PDF' the original first, then upload that.");
         } finally {
             document.body.classList.remove('exporting');
         }
