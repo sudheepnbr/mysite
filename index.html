@@ -2,36 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Editor Pro</title>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <title>OIH PDF Pro - Final Build</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         :root { --gold: #c9a035; --dark: #121212; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--dark); color: white; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; }
         
-        /* Toolbar */
         .menu { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: center; gap: 10px; }
         .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-tool { background: var(--gold); color: black; }
         .btn-save { background: #10b981; color: white; }
-        .btn:hover { opacity: 0.8; transform: scale(1.05); }
 
-        /* Canvas Area */
-        #container { position: relative; display: inline-block; margin: 20px auto; background: white; box-shadow: 0 0 30px rgba(0,0,0,0.7); }
+        #container { position: relative; display: inline-block; margin: 20px auto; background: white; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
         canvas { display: block; }
 
-        /* UI Helpers (Visible only while editing) */
-        .mask { 
-            position: absolute; background: white; border: 1px dashed #007bff; 
-            min-width: 10px; min-height: 10px; cursor: move; 
-        }
-        .text-box { 
-            position: absolute; color: black; min-width: 30px; border: 1px dashed var(--gold);
-            cursor: move; padding: 2px; background: rgba(255,255,255,0.3); font-family: Arial; font-size: 14px;
-        }
+        /* Editing Styles (Dashed Borders) */
+        .mask { position: absolute; background: white; border: 1px dashed #007bff; min-width: 10px; min-height: 10px; cursor: move; }
+        .text-box { position: absolute; color: black; min-width: 30px; border: 1px dashed var(--gold); cursor: move; padding: 2px; background: rgba(255,255,255,0.4); font-size: 14px; line-height: 1; outline: none; }
         .resizer { width: 10px; height: 10px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
 
-        /* Hiding Borders for Clean Export */
+        /* Clean Mode for Export */
         .exporting .mask, .exporting .text-box { border: none !important; background: transparent !important; }
         .exporting .resizer { display: none !important; }
     </style>
@@ -41,7 +32,7 @@
 <div class="menu">
     <input type="file" id="pdf-file" accept="application/pdf" style="display:none">
     <button class="btn btn-tool" onclick="document.getElementById('pdf-file').click()">📂 Open PDF</button>
-    <button class="btn btn-tool" onclick="addMask()">⬜ Erase (Whiteout)</button>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Erase Area</button>
     <button class="btn btn-tool" onclick="addText()">➕ Add Text</button>
     <button class="btn btn-save" onclick="savePdf()">💾 Save & Download</button>
 </div>
@@ -53,11 +44,11 @@
 </div>
 
 <script>
-    const { PDFDocument, rgb } = PDFLib;
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
     let pdfBytes = null;
     let elements = [];
 
-    // --- LOAD PDF ---
+    // --- 1. LOAD PDF ---
     document.getElementById('pdf-file').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -74,7 +65,7 @@
 
     function addMask() {
         const div = createEl('mask');
-        div.style.width = "60px"; div.style.height = "20px";
+        div.style.width = "80px"; div.style.height = "24px";
         const resizer = document.createElement('div');
         resizer.className = 'resizer';
         div.appendChild(resizer);
@@ -84,20 +75,20 @@
     function addText() {
         const div = createEl('text-box');
         div.contentEditable = true;
-        div.innerText = "Click to Edit";
+        div.innerText = "New Text";
     }
 
     function createEl(type) {
         const div = document.createElement('div');
         div.className = type; div.dataset.type = type;
-        div.style.left = "100px"; div.style.top = "100px";
+        div.style.left = "150px"; div.style.top = "150px";
         document.getElementById('container').appendChild(div);
         setupDrag(div);
         elements.push(div);
         return div;
     }
 
-    // --- DRAG & RESIZE ---
+    // --- 2. INTERACTION ---
     function setupDrag(el) {
         el.onmousedown = (e) => {
             if(e.target.className === 'resizer') return;
@@ -114,49 +105,49 @@
         resizer.onmousedown = (e) => {
             e.stopPropagation();
             document.onmousemove = (e) => {
-                el.style.width = (e.clientX - el.getBoundingClientRect().left) + 'px';
-                el.style.height = (e.clientY - el.getBoundingClientRect().top) + 'px';
+                el.style.width = Math.max(10, e.clientX - el.getBoundingClientRect().left) + 'px';
+                el.style.height = Math.max(10, e.clientY - el.getBoundingClientRect().top) + 'px';
             };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
 
-    // --- SAVE LOGIC (CLEAN EXPORT) ---
+    // --- 3. THE FIXED SAVE FUNCTION ---
     async function savePdf() {
-        if(!pdfBytes) return alert("Please upload a PDF first!");
+        if(!pdfBytes) return alert("Upload a PDF first!");
         
-        // Step 1: Hide Borders visually before processing
         document.body.classList.add('exporting');
 
         try {
             const doc = await PDFDocument.load(pdfBytes);
+            const helveticaFont = await doc.embedFont(StandardFonts.HelveticaBold);
             const page = doc.getPages()[0];
             const { width, height } = page.getSize();
             const canv = document.getElementById('pdf-canvas');
+
+            const scaleX = width / canv.width;
+            const scaleY = height / canv.height;
 
             for (let el of elements) {
                 const r = el.getBoundingClientRect();
                 const cr = canv.getBoundingClientRect();
                 
-                // Calculate PDF coordinates
-                const scaleX = width / cr.width;
-                const scaleY = height / cr.height;
-                
                 const px = (r.left - cr.left) * scaleX;
-                // PDF Y coordinate starts from bottom
-                const py = height - ((r.top - cr.top) * scaleY) - (el.dataset.type === 'mask' ? (r.height * scaleY) : 12);
+                // PDF Y-axis starts from bottom, adjust for element height
+                const py = height - ((r.top - cr.top) * scaleY) - (el.dataset.type === 'mask' ? (r.height * scaleY) : (14 * scaleY));
 
                 if(el.dataset.type === 'mask') {
                     page.drawRectangle({
                         x: px, y: py,
                         width: r.width * scaleX,
                         height: r.height * scaleY,
-                        color: rgb(1, 1, 1) // Pure White
+                        color: rgb(1, 1, 1)
                     });
                 } else {
                     page.drawText(el.innerText, {
                         x: px, y: py,
-                        size: 11 * scaleY, // Scale font size to PDF zoom
+                        size: 11 * scaleY,
+                        font: helveticaFont,
                         color: rgb(0, 0, 0)
                     });
                 }
@@ -170,10 +161,9 @@
             link.click();
             
         } catch (err) {
-            console.error(err);
-            alert("Error saving PDF. Check console.");
+            console.error("Save Error:", err);
+            alert("Save failed. Try refreshing and uploading again.");
         } finally {
-            // Step 2: Show borders again for further editing
             document.body.classList.remove('exporting');
         }
     }
