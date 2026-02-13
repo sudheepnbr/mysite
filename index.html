@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OIH ID Designer – v87.1.0</title>
+<title>OIH ID Designer – v87.4.0 (Smart Vault)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
 
 <style>
@@ -16,128 +16,119 @@
 
 body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #fff; overflow-x: hidden; touch-action: none; }
 
-/* --- AI SCANNER LOADER --- */
-#ai-loader {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-    z-index: 20000; flex-direction: column; align-items: center; justify-content: center;
-    backdrop-filter: blur(10px);
+/* --- LOGIN SCREEN (MASTER STYLE) --- */
+#login-overlay {
+    position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('login_bg.png');
+    background-size: cover; background-position: center;
 }
-.scanner-container { position: relative; width: 200px; height: 150px; display: flex; align-items: center; justify-content: center; }
-.scanner-logo { width: 120px; opacity: 0.4; }
-.scanner-line { position: absolute; width: 160px; height: 3px; background: var(--gold); box-shadow: 0 0 15px var(--gold), 0 0 30px var(--gold); z-index: 10; animation: scanMove 2s ease-in-out infinite; }
-@keyframes scanMove { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
-#prog-text { color: var(--gold); font-weight: 800; font-size: 36px; margin-top: 20px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(201, 160, 53, 0.4); }
-
-/* --- LOGIN SCREEN --- */
-#login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; align-items: center; justify-content: center; background: #000; }
-.login-card { background: rgba(15, 15, 15, 0.98); padding: 40px; border-radius: 24px; border: 1px solid var(--gold); width: 380px; text-align: center; }
-.login-card input { width: 100%; box-sizing: border-box; display: block; padding: 14px; margin-top: 15px; border-radius: 8px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; color: #000; }
+.login-card {
+    background: rgba(15, 15, 15, 0.98); padding: 40px; border-radius: 24px; border: 1px solid var(--gold);
+    width: 380px; text-align: center; box-shadow: 0 40px 80px rgba(0,0,0,0.9); backdrop-filter: blur(20px);
+}
+.login-card input {
+    width: 100%; box-sizing: border-box; display: block; padding: 14px; margin-top: 15px; 
+    border-radius: 8px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; color: #000;
+}
 .login-btn { width: 100%; margin-top: 25px; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; }
 
-/* --- UI LAYOUT --- */
+/* --- MAIN UI --- */
 .wrap { display: none; max-width: 1300px; margin: auto; padding: 20px; grid-template-columns: 350px 1fr; gap: 25px; padding-bottom: 150px; }
-.panel { background: var(--panel-bg); border-radius: 20px; padding: 25px; height: fit-content; position: sticky; top: 20px; border: 1px solid rgba(255,255,255,0.1); }
-.ui-logo { width: 100%; max-height: 80px; object-fit: contain; margin-bottom: 10px; display: block; }
+.panel { background: var(--panel-bg); border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); position: sticky; top: 20px; height: fit-content; }
+.header-area { text-align: center; margin-bottom: 20px; }
+.ui-logo { width: 100%; max-height: 70px; object-fit: contain; }
+
+/* SMART SEARCH BOX */
+.search-container { background: #111; border: 1px solid var(--gold); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: inset 0 0 10px #000; }
+.search-container label { color: var(--gold); font-size: 10px; font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+#vault-search { width: 100%; padding: 10px; box-sizing: border-box; background: #000; border: 1px solid #444; color: #fff; font-weight: 800; border-radius: 6px; text-align: center; font-size: 14px; }
+#vault-search:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 10px var(--gold); }
+
+/* INPUTS */
 label { font-size: 10px; font-weight: 800; margin-top: 15px; display: block; text-transform: uppercase; color: #888; }
-.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); border-radius: 8px; margin-top: 5px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
+.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); border-radius: 8px; margin-top: 5px; padding: 10px; font-weight: 700; cursor: pointer; text-align: center; }
 input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; margin-top: 5px; box-sizing: border-box; background: var(--input-fill); border: 2px solid var(--gold); font-weight: 700; }
-.ai-btn { width: 100%; margin-top: 10px; padding: 12px; border-radius: 10px; background: #6366f1; color: #fff; border: none; cursor: pointer; font-weight: 700; }
+
 .action-row { display: flex; gap: 10px; margin-top: 20px; }
-.icon-btn { flex: 1; height: 45px; border-radius: 10px; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+.icon-btn { flex: 1; height: 50px; border-radius: 10px; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
 
-canvas { width: 100%; max-width: 1011px; border-radius: 14px; background: #1a1a1a; display: block; border: 1px solid #333; margin-bottom: 20px; }
+canvas { width: 100%; border-radius: 14px; background: #1a1a1a; display: block; border: 1px solid #333; margin-bottom: 20px; }
 
-/* --- HISTORY TICKER & ZOOM --- */
-#ticker-bar { 
-    position: fixed; bottom: 0; left: 0; width: 100%; 
-    background: rgba(10, 10, 10, 0.95); border-top: 3px solid var(--gold); 
-    height: 120px; display: none; align-items: center; z-index: 10000; 
-}
-.ticker-label { background: var(--gold); color: #000; padding: 0 20px; height: 100%; display: flex; align-items: center; font-weight: 900; font-size: 12px; text-align: center; }
-.marquee-container { flex: 1; overflow: hidden; display: flex; align-items: center; }
+/* --- TICKER & ZOOM --- */
+#ticker-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #050505; border-top: 2px solid var(--gold); height: 110px; display: none; align-items: center; z-index: 10000; }
 .marquee { display: flex; animation: scroll 40s linear infinite; }
 .marquee:hover { animation-play-state: paused; }
+.card-thumb { height: 80px; width: 130px; background: #000; border-radius: 6px; margin: 0 12px; border: 1px solid #333; flex-shrink: 0; position: relative; cursor: pointer; }
 
-.card-thumb { 
-    height: 85px; width: 135px; background: #000; border-radius: 8px; 
-    margin: 0 15px; border: 1px solid #333; flex-shrink: 0; 
-    cursor: pointer; position: relative; transition: 0.3s;
-}
-.card-thumb:hover { border-color: var(--gold); transform: scale(1.05); }
-.card-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
-
-/* HD ZOOM PREVIEW */
-.card-thumb .zoom-hd {
+/* HD HOVER ZOOM */
+.zoom-hd {
     position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%) scale(0);
     width: 320px; height: 200px; background: #000; border: 2px solid var(--gold);
-    border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-    transition: 0.25s ease-out; pointer-events: none; z-index: 20000;
+    border-radius: 12px; box-shadow: 0 20px 50px #000;
+    transition: 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28); pointer-events: none; z-index: 20000; overflow: hidden;
 }
 .card-thumb:hover .zoom-hd { transform: translateX(-50%) scale(1); }
 .zoom-hd img { width: 100%; height: 100%; object-fit: contain; }
 
-.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 9px; text-align: center; padding: 2px 0; font-weight: 800; border-radius: 0 0 7px 7px; }
-
 @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
 @media print {
-    @page { margin: 0; size: auto; }
-    #login-overlay, .panel, #ai-loader, #ticker-bar { display: none !important; }
-    .wrap { display: block !important; }
-    #fc { display: block !important; width: 100% !important; page-break-after: always !important; }
-    #bc { display: block !important; width: 100% !important; }
+    #login-overlay, .panel, #ticker-bar { display: none !important; }
+    .wrap { display: block !important; padding: 0; }
+    #fc { page-break-after: always; width: 100% !important; border: none; }
+    #bc { width: 100% !important; border: none; }
 }
 </style>
 </head>
 <body>
 
-<div id="ai-loader">
-    <div class="scanner-container"><div class="scanner-line"></div><img src="ui_logo.png" class="scanner-logo"></div>
-    <div id="prog-text">0%</div>
-</div>
-
 <div id="login-overlay">
     <div class="login-card">
-        <h2 style="color:var(--gold); font-weight:800;">OIH Premium ID Suite</h2>
-        <input type="text" id="user-input" placeholder="Username">
-        <input type="password" id="pass-input" placeholder="Password">
-        <button class="login-btn" onclick="checkLogin()">LOGIN</button>
+        <img src="ui_logo.png" style="width: 80px;">
+        <h2 style="color:var(--gold); font-weight:800; margin-top: 20px;">OIH VAULT ACCESS</h2>
+        <input type="text" id="user-input" placeholder="Admin Username">
+        <input type="password" id="pass-input" placeholder="Secure Password">
+        <button class="login-btn" onclick="checkLogin()">AUTHORIZE SYSTEM</button>
     </div>
 </div>
 
 <div class="wrap" id="designer-ui">
   <div class="panel">
-    <div class="header-area" ondblclick="revealLock()">
+    <div class="header-area">
         <img src="ui_logo.png" class="ui-logo">
         <h1>OIH DESIGNER</h1>
     </div>
 
-    <label>Photo</label>
-    <div class="file-box" onclick="document.getElementById('photoInput').click()">Choose Photo...</div>
+    <div class="search-container">
+        <label>LIVE VAULT SEARCH (TYPE ID)</label>
+        <input type="text" id="vault-search" placeholder="Search ID No..." oninput="autoSearchVault(this.value)">
+    </div>
+
+    <label>Employee Photo</label>
+    <div class="file-box" onclick="document.getElementById('photoInput').click()">UPLOAD PHOTO</div>
     <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="loadPhoto(event)">
-    <button class="ai-btn" onclick="removeBackgroundAI()">✨Remove Background</button>
     
-    <label>Full Name</label><input type="text" id="fullname" oninput="handleNameInput(this)">
-    <label>Title</label><input type="text" id="dg" oninput="draw()">
+    <label>Full Name</label><input type="text" id="fullname" oninput="draw()">
+    <label>Designation</label><input type="text" id="dg" oninput="draw()">
     <label>ID Number</label><input type="text" id="idn" oninput="draw()">
 
     <div class="action-row">
-        <button class="icon-btn" style="background:#10b981" onclick="saveAsPNG()">💾</button>
-        <button class="icon-btn" style="background:#3b82f6" onclick="window.print()">🖨️</button>
-        <button class="icon-btn" id="lockBtn" style="background:#374151; display:none;" onclick="toggleLock()"><span id="lockIcon">🔒</span></button>
-        <button class="icon-btn" style="background:#ef4444" onclick="logout()">🚪</button>
+        <button class="icon-btn" style="background:#10b981" onclick="saveToSmartVault()" title="Save & Download">💾</button>
+        <button class="icon-btn" style="background:#3b82f6" onclick="window.print()" title="Print Card">🖨️</button>
+        <button class="icon-btn" style="background:#ef4444" onclick="logout()" title="Exit">🚪</button>
     </div>
+    <p id="storage-status" style="font-size: 9px; color: #555; text-align: center; margin-top: 10px;">Vault Storage: Optimal</p>
   </div>
 
-  <div id="print-area">
+  <div>
     <canvas id="fc"></canvas>
     <canvas id="bc"></canvas>
   </div>
 </div>
 
 <div id="ticker-bar">
-    <div class="ticker-label">SESSION LOG</div>
-    <div class="marquee-container"><div class="marquee" id="ticker-track"></div></div>
+    <div style="background:var(--gold); color:#000; padding: 25px; height:100%; font-weight:900; z-index:10; display:flex; align-items:center;">HISTORY</div>
+    <div style="flex:1; overflow:hidden;"><div class="marquee" id="ticker-track"></div></div>
 </div>
 
 <script>
@@ -146,156 +137,137 @@ const fc = document.getElementById("fc"), bc = document.getElementById("bc"),
 const fctx = fc.getContext("2d"), bctx = bc.getContext("2d");
 fc.width = bc.width = 1011; fc.height = bc.height = 638;
 
-let imgs = { front: new Image(), overlay: new Image(), back: new Image(), photo: null };
-let isLocked = true, photoRatio = 1, photoPos = { x: 550, y: 70, w: 400, h: 500 };
-let overlayPos = { x: 440, y: 16, w: 0, h: 638 };
+let imgs = { f: new Image(), b: new Image(), ov: new Image(), ph: null };
+let photoPos = { x: 550, y: 70, w: 400, h: 500 }, photoRatio = 1;
 
-imgs.front.src = "./front_base.png";
-imgs.overlay.src = "./gold_overlay.png";
-imgs.back.src = "./back_base.png";
-
-imgs.overlay.onload = () => { overlayPos.w = (imgs.overlay.width * (638/imgs.overlay.height)) * 1.1; draw(); };
-imgs.front.onload = imgs.back.onload = draw;
+imgs.f.src = "./front_base.png";
+imgs.b.src = "./back_base.png";
+imgs.ov.src = "./gold_overlay.png";
+imgs.f.onload = imgs.b.onload = imgs.ov.onload = draw;
 
 function draw() {
     fctx.clearRect(0, 0, 1011, 638);
-    if(imgs.front.complete) fctx.drawImage(imgs.front, -24, -24, 1011+48, 638+40);
-    if(imgs.photo) fctx.drawImage(imgs.photo, photoPos.x, photoPos.y, photoPos.w, photoPos.h);
-    if(imgs.overlay.complete) fctx.drawImage(imgs.overlay, overlayPos.x, overlayPos.y, overlayPos.w, overlayPos.h);
+    if(imgs.f.complete) fctx.drawImage(imgs.f, -24, -24, 1059, 678);
+    if(imgs.ph) fctx.drawImage(imgs.ph, photoPos.x, photoPos.y, photoPos.w, photoPos.h);
+    if(imgs.ov.complete) fctx.drawImage(imgs.ov, 440, 16, 600, 638);
     
     fctx.fillStyle = "#000";
-    if(fn.value) fillTextSmart(fctx, fn.value, 70, 465, 450, 46, "800");
-    if(dg.value) fillTextSmart(fctx, dg.value, 70, 525, 450, 34, "700");
-    if(idn.value) fillTextSmart(fctx, "ID No - " + idn.value, 70, 580, 450, 30, "700");
+    fctx.font = "800 46px Inter";
+    fctx.fillText(fn.value.toUpperCase(), 70, 465);
+    fctx.font = "700 34px Inter";
+    fctx.fillText(dg.value, 70, 525);
+    fctx.font = "700 30px Inter";
+    fctx.fillText("ID No - " + idn.value, 70, 580);
 
-    if(!isLocked) {
-        fctx.strokeStyle = "gold"; fctx.lineWidth = 2;
-        fctx.strokeRect(photoPos.x, photoPos.y, photoPos.w, photoPos.h);
+    bctx.drawImage(imgs.b, -24, 0, 1059, 678);
+}
+
+// --- SMART VAULT LOGIC ---
+
+function saveToSmartVault() {
+    const idValue = idn.value;
+    if(!idValue) return alert("Error: ID Number is required to save.");
+
+    draw();
+    const finalPNG = fc.toDataURL("image/png");
+
+    // 1. SMART COMPRESSION: Shrink employee photo to save 3x more space
+    let compressedPhoto = null;
+    if (imgs.ph) {
+        const tempCanvas = document.createElement('canvas');
+        const tctx = tempCanvas.getContext('2d');
+        tempCanvas.width = 350; // Resized for storage efficiency
+        tempCanvas.height = 350 / photoRatio;
+        tctx.drawImage(imgs.ph, 0, 0, tempCanvas.width, tempCanvas.height);
+        compressedPhoto = tempCanvas.toDataURL("image/jpeg", 0.7); // High compression JPEG
     }
-    bctx.clearRect(0, 0, 1011, 638);
-    if(imgs.back.complete) bctx.drawImage(imgs.back, -24, 0, 1011+48, 638+40);
+
+    const entry = {
+        id: idValue,
+        name: fn.value,
+        job: dg.value,
+        phRaw: compressedPhoto,
+        cardThumb: finalPNG // Full preview for hover
+    };
+
+    let vault = JSON.parse(localStorage.getItem('oih_smart_vault')) || [];
+    const existingIdx = vault.findIndex(item => item.id === idValue);
+    
+    if(existingIdx > -1) vault[existingIdx] = entry; 
+    else vault.unshift(entry);
+
+    // 2. STORAGE MONITOR & SAVE
+    try {
+        localStorage.setItem('oih_smart_vault', JSON.stringify(vault));
+        updateTicker();
+    } catch (e) {
+        alert("CRITICAL: Browser Storage is FULL. Please export or delete old IDs.");
+        document.getElementById('storage-status').style.color = 'red';
+        document.getElementById('storage-status').innerText = 'Vault Storage: FULL';
+    }
+
+    // 3. SINGLE DOWNLOAD
+    const link = document.createElement('a');
+    link.download = `${fn.value || 'OIH'}_${idValue}.png`;
+    link.href = finalPNG;
+    link.click();
 }
 
-function fillTextSmart(ctx, text, x, y, maxW, baseSize, weight) {
-    let size = baseSize;
-    ctx.font = `${weight} ${size}px Inter`;
-    while (ctx.measureText(text).width > maxW && size > 10) { size--; ctx.font = `${weight} ${size}px Inter`; }
-    ctx.fillText(text, x, y);
+// --- LIVE SEARCH LOGIC ---
+function autoSearchVault(query) {
+    if(!query) return;
+    const vault = JSON.parse(localStorage.getItem('oih_smart_vault')) || [];
+    const result = vault.find(item => item.id.toLowerCase() === query.toLowerCase());
+
+    if(result) {
+        fn.value = result.name;
+        dg.value = result.job;
+        idn.value = result.id;
+        if(result.phRaw) {
+            const i = new Image();
+            i.onload = () => { imgs.ph = i; photoRatio = i.width / i.height; draw(); };
+            i.src = result.phRaw;
+        }
+        draw();
+    }
 }
 
-// --- REDESIGN LOGIC ---
-function refreshTicker() {
-    const list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
+function updateTicker() {
+    const vault = JSON.parse(localStorage.getItem('oih_smart_vault')) || [];
     const track = document.getElementById('ticker-track');
-    if(list.length === 0) return;
+    if(vault.length === 0) return;
     document.getElementById('ticker-bar').style.display = 'flex';
     
-    const html = list.map((item, idx) => `
-        <div class="card-thumb" onclick="loadFromHistory(${idx})">
-            <div class="zoom-hd"><img src="${item.hd}"></div>
-            <img src="${item.thumb}">
-            <div class="card-thumb-tag">${item.id}</div>
+    // Create looped ticker items
+    const html = vault.map(item => `
+        <div class="card-thumb" onclick="autoSearchVault('${item.id}')">
+            <div class="zoom-hd"><img src="${item.cardThumb}"></div>
+            <img src="${item.cardThumb}">
         </div>
     `).join('');
     track.innerHTML = html + html;
 }
 
-function loadFromHistory(idx) {
-    const list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
-    const data = list[idx]; if(!data) return;
-    fn.value = data.name; dg.value = data.job; idn.value = data.id;
-    if(data.phRaw) {
-        const i = new Image(); i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; draw(); };
-        i.src = data.phRaw;
-    }
-    draw();
-}
-
-function saveAsPNG() {
-    draw(); // Ensure clean draw
-    const nameStr = (fn.value || "ID").trim().replace(/\s+/g, '_');
-    const idStr = (idn.value || "000").trim().replace(/\s+/g, '_');
-    const fullData = fc.toDataURL("image/png");
-
-    // History Entry
-    const snap = document.createElement('canvas'); snap.width = 135; snap.height = 85;
-    snap.getContext('2d').drawImage(fc, 0, 0, 135, 85);
-    
-    let list = JSON.parse(localStorage.getItem('oih_vault_v1')) || [];
-    list.unshift({
-        id: idn.value || 'N/A', name: fn.value, job: dg.value,
-        thumb: snap.toDataURL('image/jpeg', 0.6),
-        hd: fullData, // For Zoom
-        phRaw: imgs.photo ? imgs.photo.src : null
-    });
-    if(list.length > 10) list.pop();
-    localStorage.setItem('oih_vault_v1', JSON.stringify(list));
-    refreshTicker();
-
-    // Trigger Download ONCE
-    const link = document.createElement('a');
-    link.download = `${nameStr}_${idStr}.png`;
-    link.href = fullData;
-    link.click();
-}
-
-// UI HANDLERS
+// --- MASTER HANDLERS ---
 function checkLogin() {
     if(document.getElementById('user-input').value === 'admin' && document.getElementById('pass-input').value === 'oih2026') {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('designer-ui').style.display = 'grid';
-        sessionStorage.setItem('oih_auth', 'true');
-        refreshTicker(); draw();
+        updateTicker(); draw();
     }
 }
-function logout() { sessionStorage.removeItem('oih_auth'); location.reload(); }
-function revealLock() { const b = document.getElementById("lockBtn"); b.style.display = (b.style.display==="flex") ? "none" : "flex"; }
-function toggleLock() { isLocked = !isLocked; document.getElementById("lockIcon").innerText = isLocked ? "🔒" : "🔓"; draw(); }
-function handleNameInput(el) { el.value = el.value.split(" ").map(w => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase()).join(" "); draw(); }
+
+function logout() { location.reload(); }
 
 function loadPhoto(e) {
-    const reader = new FileReader();
-    reader.onload = ev => {
+    const r = new FileReader();
+    r.onload = ev => {
         const i = new Image();
-        i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; photoPos.h = photoPos.w/photoRatio; draw(); };
+        i.onload = () => { imgs.ph = i; photoRatio = i.width / i.height; photoPos.h = photoPos.w / photoRatio; draw(); };
         i.src = ev.target.result;
     };
-    reader.readAsDataURL(e.target.files[0]);
+    r.readAsDataURL(e.target.files[0]);
 }
-
-async function removeBackgroundAI() {
-    const file = document.getElementById('photoInput').files[0]; if(!file) return;
-    const loader = document.getElementById('ai-loader'), pText = document.getElementById('prog-text');
-    loader.style.display = 'flex';
-    let p = 0; const iv = setInterval(() => { if(p<90) { p+=5; pText.innerText = p+'%'; } }, 200);
-    try {
-        const fd = new FormData(); fd.append('image_file', file);
-        const res = await fetch('https://api.remove.bg/v1.0/removebg', { method: 'POST', headers: { 'X-Api-Key': "c9sbqbPTLtacLw1rZbm4KjHE" }, body: fd });
-        if(res.ok) {
-            const b = await res.blob(); const i = new Image();
-            i.onload = () => { imgs.photo = i; photoRatio = i.width/i.height; photoPos.h = photoPos.w/photoRatio; draw(); loader.style.display='none'; };
-            i.src = URL.createObjectURL(b);
-        }
-    } catch (e) { loader.style.display='none'; }
-    clearInterval(iv);
-}
-
-// Interaction
-let target = null, start = {};
-const getP = (e, c) => { const r = c.getBoundingClientRect(); return { x: (e.clientX - r.left)*(1011/r.width), y: (e.clientY - r.top)*(638/r.height) }; };
-fc.onmousedown = (e) => {
-    const p = getP(e, fc);
-    if(p.x > photoPos.x && p.x < photoPos.x+photoPos.w && p.y > photoPos.y && p.y < photoPos.y+photoPos.h) {
-        target = photoPos; start = { x: p.x - target.x, y: p.y - target.y };
-    }
-};
-window.onmousemove = (e) => {
-    if(!target) return;
-    const p = getP(e, fc);
-    target.x = p.x - start.x; target.y = p.y - start.y;
-    draw();
-};
-window.onmouseup = () => target = null;
 
 window.onload = () => { if(sessionStorage.getItem('oih_auth') === 'true') { checkLogin(); } };
 </script>
