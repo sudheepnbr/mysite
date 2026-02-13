@@ -2,63 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Master Suite</title>
+    <title>OIH PDF Master - OCR Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     
     <style>
-        :root { --gold: #c9a035; --dark: #0a0a0a; --gray: #1a1a1a; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--dark); color: white; overflow: hidden; }
+        :root { --gold: #c9a035; --dark: #0a0a0a; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: #151515; color: white; overflow: hidden; }
         
-        /* Dashboard Styling */
-        .toolbar { background: #000; padding: 10px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; z-index: 1000; position: relative; }
+        /* Dashboard */
+        .toolbar { background: #000; padding: 10px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 8px; z-index: 1000; position: relative; }
         .btn { padding: 8px 14px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
+        .btn-ocr { background: #6366f1; color: white; } /* Indigo for OCR */
         .btn-tool { background: var(--gold); color: #000; }
-        .btn-action { background: #333; color: #fff; }
         .btn-save { background: #10b981; color: white; }
-        .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        
+        #loading-overlay { display: none; position: fixed; top: 60px; left: 0; right: 0; background: var(--gold); color: black; padding: 5px; text-align: center; font-size: 12px; z-index: 2000; font-weight: bold; }
 
         /* Workspace */
-        #workspace { height: calc(100vh - 70px); overflow: auto; padding: 40px; background: #151515; display: flex; justify-content: center; }
-        #canvas-wrap { position: relative; background: white; box-shadow: 0 0 50px rgba(0,0,0,1); transition: 0.3s; }
+        #workspace { height: calc(100vh - 70px); overflow: auto; padding: 40px; display: flex; justify-content: center; }
+        #canvas-wrap { position: relative; background: white; box-shadow: 0 0 50px rgba(0,0,0,1); }
         canvas { display: block; }
 
-        /* Overlays */
-        .overlay { position: absolute; cursor: move; box-sizing: border-box; outline: 1px dashed transparent; }
-        .overlay:hover { outline: 1px dashed var(--gold); }
+        /* Editable OCR Layers */
+        .ocr-box { 
+            position: absolute; color: transparent; background: rgba(99, 102, 241, 0.1); 
+            cursor: text; border: 1px solid transparent; transition: 0.1s;
+        }
+        .ocr-box:hover { background: rgba(99, 102, 241, 0.3); border-color: var(--gold); }
+        .ocr-box:focus { color: black; background: white; border-color: var(--gold); outline: none; z-index: 100; }
+
+        /* Custom Overlays */
+        .overlay { position: absolute; cursor: move; }
+        .mask { background: white; border: 1px dashed #ccc; }
+        .resizer { width: 8px; height: 8px; background: var(--gold); position: absolute; right: -4px; bottom: -4px; cursor: se-resize; border-radius: 50%; }
         
-        .mask { background: white; }
-        .text-box { color: black; min-width: 40px; padding: 2px; background: rgba(255,255,255,0.5); font-family: Arial; font-size: 14px; outline: none; }
-        .image-box { border: 1px dashed #ccc; }
-        .signature-box { border: 1px dashed #007bff; font-family: 'Cursive', serif; color: #00008b; font-size: 20px; }
-
-        .resizer { width: 10px; height: 10px; background: var(--gold); position: absolute; right: -5px; bottom: -5px; cursor: se-resize; border-radius: 50%; }
-        .del { position: absolute; top: -10px; right: -10px; background: red; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; display: none; align-items: center; justify-content: center; font-weight: bold; }
-        .overlay:hover .del { display: flex; }
-
-        /* Export Mode */
-        .exporting .overlay { outline: none !important; border: none !important; background: transparent !important; }
-        .exporting .resizer, .exporting .del { display: none !important; }
-        .exporting .mask { background: white !important; }
+        .exporting .ocr-box { background: transparent !important; border: none !important; color: black !important; }
+        .exporting .mask { border: none !important; }
+        .exporting .resizer { display: none !important; }
     </style>
 </head>
 <body>
 
+<div id="loading-overlay">OCR is scanning document... Please wait...</div>
+
 <div class="toolbar">
     <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
-    <input type="file" id="img-input" accept="image/*" style="display:none">
-    
-    <button class="btn btn-action" onclick="document.getElementById('pdf-input').click()">📂 PDF</button>
-    <button class="btn btn-tool" onclick="addObj('mask')">⬜ Erase</button>
-    <button class="btn btn-tool" onclick="addObj('text-box')">➕ Text</button>
-    <button class="btn btn-tool" onclick="document.getElementById('img-input').click()">🖼️ Image</button>
-    <button class="btn btn-tool" onclick="addObj('signature-box')">✍️ Sign</button>
-    
-    <div style="width:1px; background:#444; margin:0 5px;"></div>
-    
-    <button class="btn btn-action" id="undoBtn" onclick="undo()" disabled>↩️ Undo</button>
-    <button class="btn btn-action" id="redoBtn" onclick="redo()" disabled>↪️ Redo</button>
-    <button class="btn btn-save" onclick="savePdf()">💾 DOWNLOAD PDF</button>
+    <button class="btn btn-tool" onclick="document.getElementById('pdf-input').click()">📂 Open PDF</button>
+    <button class="btn btn-ocr" onclick="runOCR()">🔍 Run OCR (Make Editable)</button>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Erase Area</button>
+    <button class="btn btn-tool" onclick="addText()">➕ Custom Text</button>
+    <button class="btn btn-save" onclick="savePdf()">💾 Save Document</button>
 </div>
 
 <div id="workspace">
@@ -71,10 +66,8 @@
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
     let pdfBytes = null;
     let overlays = [];
-    let history = [];
-    let redoStack = [];
 
-    // --- 1. LOADERS ---
+    // --- 1. LOAD PDF ---
     document.getElementById('pdf-input').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -82,63 +75,76 @@
         renderPage();
     };
 
-    document.getElementById('img-input').onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (f) => { addObj('image-box', f.target.result); };
-        reader.readAsDataURL(file);
-    };
-
     async function renderPage() {
         const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({scale: 1.5});
         const canvas = document.getElementById('pdf-canvas');
+        const context = canvas.getContext('2d');
         canvas.height = viewport.height; canvas.width = viewport.width;
-        await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+        await page.render({canvasContext: context, viewport: viewport}).promise;
         document.getElementById('canvas-wrap').style.width = canvas.width+'px';
     }
 
-    // --- 2. OBJECT CREATION ---
-    function addObj(type, content = null) {
-        saveHistory();
-        createEl(type, content);
+    // --- 2. OCR ENGINE (THE MAGIC) ---
+    async function runOCR() {
+        if(!pdfBytes) return alert("Upload a PDF first");
+        const loader = document.getElementById('loading-overlay');
+        loader.style.display = 'block';
+
+        const canvas = document.getElementById('pdf-canvas');
+        
+        // Tesseract scans the canvas directly
+        const worker = await Tesseract.createWorker();
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+        const { data } = await worker.recognize(canvas);
+        
+        // Create editable boxes for every detected word
+        data.words.forEach(word => {
+            const span = document.createElement('div');
+            span.className = 'ocr-box';
+            span.contentEditable = true;
+            span.innerText = word.text;
+            
+            // Position exactly over original text
+            span.style.left = word.bbox.x0 + 'px';
+            span.style.top = word.bbox.y0 + 'px';
+            span.style.width = (word.bbox.x1 - word.bbox.x0) + 'px';
+            span.style.height = (word.bbox.y1 - word.bbox.y0) + 'px';
+            span.style.fontSize = (word.bbox.y1 - word.bbox.y0) * 0.8 + 'px';
+
+            document.getElementById('canvas-wrap').appendChild(span);
+            overlays.push(span);
+        });
+
+        await worker.terminate();
+        loader.style.display = 'none';
+        alert("OCR Complete! You can now click on any text in the document to edit it.");
     }
 
-    function createEl(type, content, state = null) {
+    // --- 3. MANUAL TOOLS ---
+    function addMask() {
+        const div = createUI('mask');
+        div.style.width = "100px"; div.style.height = "25px";
+    }
+
+    function addText() {
+        const div = createUI('text-box');
+        div.className += ' ocr-box'; // Use same styling
+        div.style.color = 'black';
+        div.innerText = "New Text";
+    }
+
+    function createUI(type) {
         const div = document.createElement('div');
         div.className = `overlay ${type}`;
         div.dataset.type = type;
-        div.style.left = state ? state.x : "100px";
-        div.style.top = state ? state.y : "100px";
-
-        // Delete button
-        const del = document.createElement('div');
-        del.className = 'del'; del.innerText = '×';
-        del.onclick = () => { saveHistory(); div.remove(); overlays = overlays.filter(o => o !== div); };
-        div.appendChild(del);
-
+        div.style.left = "50px"; div.style.top = "50px";
+        
         if(type === 'text-box') {
             div.contentEditable = true;
-            div.innerText = state ? state.t : "New Text";
-        } else if(type === 'signature-box') {
-            div.contentEditable = true;
-            div.innerText = state ? state.t : "Signature";
-            div.style.fontFamily = 'cursive';
-        } else if(type === 'image-box') {
-            const img = new Image();
-            img.src = content || state.img;
-            img.style.width = '100%'; img.style.height = '100%';
-            div.appendChild(img);
-            div.dataset.img = img.src;
-            div.style.width = state ? state.w : "100px";
-            div.style.height = state ? state.h : "100px";
         } else {
-            div.style.width = state ? state.w : "100px";
-            div.style.height = state ? state.h : "30px";
-        }
-
-        if(type !== 'text-box' && type !== 'signature-box') {
             const rs = document.createElement('div');
             rs.className = 'resizer';
             div.appendChild(rs);
@@ -148,52 +154,16 @@
         document.getElementById('canvas-wrap').appendChild(div);
         setupDrag(div);
         overlays.push(div);
+        return div;
     }
 
-    // --- 3. UNDO/REDO & TOOLS ---
-    function saveHistory() {
-        const data = overlays.map(o => ({
-            type: o.dataset.type,
-            x: o.style.left, y: o.style.top,
-            w: o.style.width, h: o.style.height,
-            t: o.innerText, img: o.dataset.img
-        }));
-        history.push(JSON.stringify(data));
-        redoStack = [];
-        updateBtns();
-    }
-
-    function undo() {
-        if(!history.length) return;
-        const current = overlays.map(o => ({ type: o.dataset.type, x: o.style.left, y: o.style.top, w: o.style.width, h: o.style.height, t: o.innerText, img: o.dataset.img }));
-        redoStack.push(JSON.stringify(current));
-        restore(JSON.parse(history.pop()));
-    }
-
-    function redo() {
-        if(!redoStack.length) return;
-        saveHistory();
-        restore(JSON.parse(redoStack.pop()));
-    }
-
-    function restore(state) {
-        overlays.forEach(o => o.remove());
-        overlays = [];
-        state.forEach(s => createEl(s.type, s.img, s));
-        updateBtns();
-    }
-
-    function updateBtns() {
-        document.getElementById('undoBtn').disabled = history.length === 0;
-        document.getElementById('redoBtn').disabled = redoStack.length === 0;
-    }
-
+    // --- 4. INTERACTION ---
     function setupDrag(el) {
         el.onmousedown = (e) => {
-            if(e.target.className === 'resizer' || e.target.className === 'del') return;
+            if(e.target.className === 'resizer') return;
             let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
             document.onmousemove = (e) => { el.style.left = (e.clientX-ox)+'px'; el.style.top = (e.clientY-oy)+'px'; };
-            document.onmouseup = () => { document.onmousemove = null; };
+            document.onmouseup = () => document.onmousemove = null;
         };
     }
 
@@ -208,13 +178,13 @@
         };
     }
 
-    // --- 4. THE MASTER SAVE ---
+    // --- 5. SAVE ---
     async function savePdf() {
-        if(!pdfBytes) return alert("No PDF!");
+        if(!pdfBytes) return;
         document.body.classList.add('exporting');
         try {
             const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-            const font = await doc.embedFont(StandardFonts.HelveticaBold);
+            const font = await doc.embedFont(StandardFonts.Helvetica);
             const page = doc.getPages()[0];
             const { width, height } = page.getSize();
             const canv = document.getElementById('pdf-canvas');
@@ -226,22 +196,20 @@
                 const px = (r.left - cr.left) * sx;
                 const py = height - ((r.top - cr.top) * sy) - (r.height * sy);
 
-                if(el.dataset.type === 'mask') {
+                if(el.classList.contains('mask')) {
                     page.drawRectangle({ x: px, y: py, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
-                } else if(el.dataset.type === 'image-box') {
-                    const imgData = el.dataset.img;
-                    const img = imgData.includes('png') ? await doc.embedPng(imgData) : await doc.embedJpg(imgData);
-                    page.drawImage(img, { x: px, y: py, width: r.width*sx, height: r.height*sy });
                 } else {
-                    page.drawText(el.innerText, { x: px, y: py + 5, size: 12 * sy, font: font, color: rgb(0,0,0) });
+                    // Draw White background under edited OCR text to hide original
+                    page.drawRectangle({ x: px, y: py, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
+                    page.drawText(el.innerText, { x: px, y: py + 2, size: (r.height * sy) * 0.8, font: font, color: rgb(0,0,0) });
                 }
             }
 
             const out = await doc.save();
             const blob = new Blob([out], {type: 'application/pdf'});
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob); link.download = "OIH_Edited.pdf"; link.click();
-        } catch(e) { console.error(e); alert("Save Error!"); }
+            link.href = URL.createObjectURL(blob); link.download = "OIH_OCR_Edited.pdf"; link.click();
+        } catch(e) { console.error(e); alert("Save Error"); }
         finally { document.body.classList.remove('exporting'); }
     }
 </script>
