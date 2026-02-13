@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OIH ID Designer – v86.9.80</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root { 
+    --gold: #c9a035; 
+    --bg-dark: #000000;
+    --panel-bg: rgba(15, 15, 15, 0.98);
+    --input-fill: #e0f2fe; 
+}
+
+body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #fff; overflow-x: hidden; }
+
+/* --- LOGIN --- */
+#login-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #000; }
+.login-card { background: #111; padding: 40px; border-radius: 20px; border: 1px solid var(--gold); width: 300px; text-align: center; }
+.login-card input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 5px; border: none; background: var(--input-fill); font-weight: 700; }
+.login-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--gold); border: none; font-weight: 800; cursor: pointer; border-radius: 5px; }
+
+/* --- UI LAYOUT --- */
+.wrap { display: none; max-width: 1200px; margin: auto; padding: 20px; grid-template-columns: 320px 1fr; gap: 20px; padding-bottom: 160px; }
+.panel { background: var(--panel-bg); border-radius: 15px; padding: 20px; border: 1px solid #333; position: sticky; top: 20px; height: fit-content; }
+.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); padding: 10px; border-radius: 8px; font-weight: 800; text-align: center; cursor: pointer; margin-bottom: 10px; }
+input[type="text"] { width: 100%; padding: 10px; margin: 5px 0 15px 0; box-sizing: border-box; border-radius: 5px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; }
+.action-row { display: flex; gap: 10px; }
+.icon-btn { flex: 1; height: 45px; border-radius: 8px; border: none; cursor: pointer; font-size: 20px; color: #fff; }
+
+canvas { width: 100%; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px; background: #111; }
+
+/* --- THE PREVIEW BAR (FORCED DISPLAY) --- */
+#ticker-bar { 
+    position: fixed; bottom: 0; left: 0; width: 100%; 
+    background: #050505; 
+    border-top: 3px solid var(--gold); 
+    height: 120px; 
+    display: none; /* Controlled by JS */
+    align-items: center; 
+    z-index: 9999999 !important; 
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+}
+.ticker-label { 
+    background: var(--gold); color: #000; padding: 0 15px; 
+    height: 100%; display: flex; align-items: center; 
+    font-weight: 900; font-size: 11px; text-align: center; width: 80px;
+}
+.marquee { display: flex; white-space: nowrap; animation: scroll 25s linear infinite; padding-left: 20px; }
+.marquee:hover { animation-play-state: paused; }
+
+.card-thumb { 
+    height: 85px; width: 135px; background: #1a1a1a; border-radius: 5px; 
+    margin-right: 20px; border: 1px solid #333; overflow: hidden; 
+    position: relative; flex-shrink: 0; cursor: pointer;
+}
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 9px; text-align: center; padding: 2px 0; }
+
+@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+@media print {
+    @page { size: 54mm 85.6mm; margin: 0; }
+    .panel, #ticker-bar, #login-overlay { display: none !important; }
+    canvas { width: 85.6mm !important; height: 54mm !important; transform: rotate(90deg) translate(0, -54mm); transform-origin: top left; }
+}
+</style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="login-card">
+        <h2 style="color:var(--gold)">OIH ACCESS</h2>
+        <input type="text" id="user" placeholder="Admin">
+        <input type="password" id="pass" placeholder="Password">
+        <button class="login-btn" onclick="tryLogin()">LOGIN</button>
+    </div>
+</div>
+
+<div class="wrap" id="app">
+    <div class="panel">
+        <label>Photo</label>
+        <div class="file-box" onclick="document.getElementById('imgIn').click()">UPLOAD IMAGE</div>
+        <input type="file" id="imgIn" style="display:none" onchange="previewImg(event)">
+        
+        <label>Name</label><input type="text" id="name" oninput="render()">
+        <label>Designation</label><input type="text" id="job" oninput="render()">
+        <label>ID Number</label><input type="text" id="idnum" oninput="render()">
+
+        <div class="action-row">
+            <button class="icon-btn" style="background:#10b981" onclick="saveCard()">💾</button>
+            <button class="icon-btn" style="background:#3b82f6" onclick="window.print()">🖨️</button>
+        </div>
+    </div>
+
+    <div>
+        <canvas id="front"></canvas>
+        <canvas id="back"></canvas>
+    </div>
+</div>
+
+<div id="ticker-bar">
+    <div class="ticker-label">HISTORY (LAST 10)</div>
+    <div class="marquee" id="ticker-track"></div>
+</div>
+
+<script>
+const fv = document.getElementById('front'), bv = document.getElementById('back');
+const fctx = fv.getContext('2d'), bctx = bv.getContext('2d');
+fv.width = bv.width = 1011; fv.height = bv.height = 638;
+
+let assets = { f: new Image(), b: new Image(), ov: new Image(), ph: null };
+assets.f.src = 'front_base.png'; assets.b.src = 'back_base.png'; assets.ov.src = 'gold_overlay.png';
+assets.f.onload = assets.b.onload = assets.ov.onload = render;
+
+function render() {
+    fctx.clearRect(0,0,1011,638);
+    fctx.drawImage(assets.f, -24, -24, 1059, 678);
+    if(assets.ph) fctx.drawImage(assets.ph, 550, 70, 400, 500);
+    fctx.drawImage(assets.ov, 440, 16, 600, 638);
+    
+    fctx.fillStyle = "#000";
+    fctx.font = "800 46px Inter"; fctx.fillText(document.getElementById('name').value, 70, 465);
+    fctx.font = "700 34px Inter"; fctx.fillText(document.getElementById('job').value, 70, 525);
+    fctx.font = "700 30px Inter"; fctx.fillText("ID No: " + document.getElementById('idnum').value, 70, 580);
+
+    bctx.clearRect(0,0,1011,638);
+    bctx.drawImage(assets.b, -24, 0, 1059, 678);
+}
+
+function refreshTicker() {
+    const list = JSON.parse(localStorage.getItem('oih_history_v4')) || [];
+    const bar = document.getElementById('ticker-bar');
+    const track = document.getElementById('ticker-track');
+    
+    if(list.length > 0) {
+        bar.style.display = 'flex';
+        const content = list.map(item => `
+            <div class="card-thumb">
+                <img src="${item.img}">
+                <div class="card-thumb-tag">${item.id}</div>
+            </div>
+        `).join('');
+        track.innerHTML = content + content; // Duplicate for loop
+    }
+}
+
+function saveCard() {
+    render();
+    const snap = document.createElement('canvas');
+    snap.width = 135; snap.height = 85;
+    snap.getContext('2d').drawImage(fv, 0, 0, 135, 85);
+    
+    let list = JSON.parse(localStorage.getItem('oih_history_v4')) || [];
+    list.unshift({ id: document.getElementById('idnum').value || 'ID', img: snap.toDataURL('image/jpeg', 0.5) });
+    if(list.length > 10) list.pop();
+    
+    localStorage.setItem('oih_history_v4', JSON.stringify(list));
+    refreshTicker();
+
+    const link = document.createElement('a');
+    link.download = 'Card.png'; link.href = fv.toDataURL(); link.click();
+}
+
+function tryLogin() {
+    if(document.getElementById('user').value === 'admin') {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('app').style.display = 'grid';
+        refreshTicker();
+    }
+}
+
+function previewImg(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const i = new Image();
+        i.onload = () => { assets.ph = i; render(); };
+        i.src = ev.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+}
+</script>
+</body>
+</html>
