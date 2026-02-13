@@ -2,46 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Pro Editor</title>
+    <title>OIH PDF Editor Pro</title>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         :root { --gold: #c9a035; --dark: #121212; }
-        body { margin: 0; font-family: sans-serif; background: var(--dark); color: white; text-align: center; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--dark); color: white; }
         
-        .menu { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; }
-        .btn { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        /* Toolbar */
+        .menu { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: center; gap: 10px; }
+        .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-tool { background: var(--gold); color: black; }
         .btn-save { background: #10b981; color: white; }
+        .btn:hover { opacity: 0.8; transform: scale(1.05); }
 
-        #container { position: relative; display: inline-block; margin-top: 20px; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        /* Canvas Area */
+        #container { position: relative; display: inline-block; margin: 20px auto; background: white; box-shadow: 0 0 30px rgba(0,0,0,0.7); }
         canvas { display: block; }
 
-        /* The "Eraser" Box */
+        /* UI Helpers (Visible only while editing) */
         .mask { 
-            position: absolute; background: white; border: 1px dashed #ccc; 
-            min-width: 20px; min-height: 15px; cursor: move; 
+            position: absolute; background: white; border: 1px dashed #007bff; 
+            min-width: 10px; min-height: 10px; cursor: move; 
         }
-        /* The New Text Box */
         .text-box { 
-            position: absolute; color: black; min-width: 50px; outline: 1px dashed var(--gold);
-            cursor: move; padding: 2px; background: rgba(255,255,255,0.5); font-family: Arial;
+            position: absolute; color: black; min-width: 30px; border: 1px dashed var(--gold);
+            cursor: move; padding: 2px; background: rgba(255,255,255,0.3); font-family: Arial; font-size: 14px;
         }
-        .resizer { width: 8px; height: 8px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
+        .resizer { width: 10px; height: 10px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
+
+        /* Hiding Borders for Clean Export */
+        .exporting .mask, .exporting .text-box { border: none !important; background: transparent !important; }
+        .exporting .resizer { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="menu">
     <input type="file" id="pdf-file" accept="application/pdf" style="display:none">
-    <button class="btn btn-tool" onclick="document.getElementById('pdf-file').click()">📂 Open Document</button>
-    <button class="btn btn-tool" onclick="addMask()">⬜ Mask (Erase) Text</button>
-    <button class="btn btn-tool" onclick="addText()">➕ Add New Text</button>
-    <button class="btn btn-save" onclick="savePdf()">💾 Save Changes</button>
+    <button class="btn btn-tool" onclick="document.getElementById('pdf-file').click()">📂 Open PDF</button>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Erase (Whiteout)</button>
+    <button class="btn btn-tool" onclick="addText()">➕ Add Text</button>
+    <button class="btn btn-save" onclick="savePdf()">💾 Save & Download</button>
 </div>
 
-<div id="container">
-    <canvas id="pdf-canvas"></canvas>
+<div style="text-align: center;">
+    <div id="container">
+        <canvas id="pdf-canvas"></canvas>
+    </div>
 </div>
 
 <script>
@@ -49,8 +57,10 @@
     let pdfBytes = null;
     let elements = [];
 
+    // --- LOAD PDF ---
     document.getElementById('pdf-file').onchange = async (e) => {
         const file = e.target.files[0];
+        if(!file) return;
         pdfBytes = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
         const page = await pdf.getPage(1);
@@ -59,11 +69,12 @@
         canvas.width = viewport.width; canvas.height = viewport.height;
         await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
         document.getElementById('container').style.width = canvas.width + 'px';
+        document.getElementById('container').style.height = canvas.height + 'px';
     };
 
     function addMask() {
         const div = createEl('mask');
-        div.style.width = "80px"; div.style.height = "20px";
+        div.style.width = "60px"; div.style.height = "20px";
         const resizer = document.createElement('div');
         resizer.className = 'resizer';
         div.appendChild(resizer);
@@ -73,24 +84,28 @@
     function addText() {
         const div = createEl('text-box');
         div.contentEditable = true;
-        div.innerText = "New Data";
+        div.innerText = "Click to Edit";
     }
 
     function createEl(type) {
         const div = document.createElement('div');
         div.className = type; div.dataset.type = type;
-        div.style.left = "50px"; div.style.top = "50px";
+        div.style.left = "100px"; div.style.top = "100px";
         document.getElementById('container').appendChild(div);
         setupDrag(div);
         elements.push(div);
         return div;
     }
 
+    // --- DRAG & RESIZE ---
     function setupDrag(el) {
         el.onmousedown = (e) => {
             if(e.target.className === 'resizer') return;
             let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
-            document.onmousemove = (e) => { el.style.left = (e.clientX-ox)+'px'; el.style.top = (e.clientY-oy)+'px'; };
+            document.onmousemove = (e) => { 
+                el.style.left = (e.clientX - ox) + 'px'; 
+                el.style.top = (e.clientY - oy) + 'px'; 
+            };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
@@ -106,28 +121,61 @@
         };
     }
 
+    // --- SAVE LOGIC (CLEAN EXPORT) ---
     async function savePdf() {
-        const doc = await PDFDocument.load(pdfBytes);
-        const page = doc.getPages()[0];
-        const { width, height } = page.getSize();
-        const canv = document.getElementById('pdf-canvas');
+        if(!pdfBytes) return alert("Please upload a PDF first!");
+        
+        // Step 1: Hide Borders visually before processing
+        document.body.classList.add('exporting');
 
-        for (let el of elements) {
-            const r = el.getBoundingClientRect();
-            const cr = canv.getBoundingClientRect();
-            const px = (r.left - cr.left) * (width / cr.width);
-            const py = height - ((r.top - cr.top) * (height / cr.height)) - (el.dataset.type === 'mask' ? (r.height * (height / cr.height)) : 12);
+        try {
+            const doc = await PDFDocument.load(pdfBytes);
+            const page = doc.getPages()[0];
+            const { width, height } = page.getSize();
+            const canv = document.getElementById('pdf-canvas');
 
-            if(el.dataset.type === 'mask') {
-                page.drawRectangle({ x: px, y: py, width: r.width*(width/cr.width), height: r.height*(height/cr.height), color: rgb(1,1,1) });
-            } else {
-                page.drawText(el.innerText, { x: px, y: py, size: 12, color: rgb(0,0,0) });
+            for (let el of elements) {
+                const r = el.getBoundingClientRect();
+                const cr = canv.getBoundingClientRect();
+                
+                // Calculate PDF coordinates
+                const scaleX = width / cr.width;
+                const scaleY = height / cr.height;
+                
+                const px = (r.left - cr.left) * scaleX;
+                // PDF Y coordinate starts from bottom
+                const py = height - ((r.top - cr.top) * scaleY) - (el.dataset.type === 'mask' ? (r.height * scaleY) : 12);
+
+                if(el.dataset.type === 'mask') {
+                    page.drawRectangle({
+                        x: px, y: py,
+                        width: r.width * scaleX,
+                        height: r.height * scaleY,
+                        color: rgb(1, 1, 1) // Pure White
+                    });
+                } else {
+                    page.drawText(el.innerText, {
+                        x: px, y: py,
+                        size: 11 * scaleY, // Scale font size to PDF zoom
+                        color: rgb(0, 0, 0)
+                    });
+                }
             }
+
+            const savedBytes = await doc.save();
+            const blob = new Blob([savedBytes], {type: 'application/pdf'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "Edited_Document.pdf";
+            link.click();
+            
+        } catch (err) {
+            console.error(err);
+            alert("Error saving PDF. Check console.");
+        } finally {
+            // Step 2: Show borders again for further editing
+            document.body.classList.remove('exporting');
         }
-        const savedBytes = await doc.save();
-        const blob = new Blob([savedBytes], {type: 'application/pdf'});
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob); link.download = "Edited.pdf"; link.click();
     }
 </script>
 </body>
