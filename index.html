@@ -2,27 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OIH PDF Pro - Final Build</title>
+    <title>OIH PDF Pro - V91.0.1</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --gold: #c9a035; --dark: #121212; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; }
+        :root { --gold: #c9a035; --dark: #121212; --bg: #1e1e1e; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; }
         
-        .menu { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; display: flex; justify-content: center; gap: 10px; }
-        .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-tool { background: var(--gold); color: black; }
+        .menu { background: #1a1a1a; padding: 12px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 1000; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; transition: 0.2s; font-size: 13px; }
+        .btn-tool { background: var(--gold); color: #000; }
+        .btn-action { background: #444; color: #fff; }
         .btn-save { background: #10b981; color: white; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-        #container { position: relative; display: inline-block; margin: 20px auto; background: white; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        #container-wrap { text-align: center; padding: 20px; overflow: auto; height: calc(100vh - 80px); }
+        #pdf-container { position: relative; display: inline-block; background: white; box-shadow: 0 10px 50px rgba(0,0,0,0.6); }
         canvas { display: block; }
 
-        /* Editing Styles (Dashed Borders) */
-        .mask { position: absolute; background: white; border: 1px dashed #007bff; min-width: 10px; min-height: 10px; cursor: move; }
-        .text-box { position: absolute; color: black; min-width: 30px; border: 1px dashed var(--gold); cursor: move; padding: 2px; background: rgba(255,255,255,0.4); font-size: 14px; line-height: 1; outline: none; }
+        /* Overlays */
+        .mask, .text-box { position: absolute; cursor: move; box-sizing: border-box; }
+        .mask { background: white; border: 1px dashed #007bff; min-width: 10px; min-height: 10px; }
+        .text-box { color: black; min-width: 40px; border: 1px dashed var(--gold); padding: 2px; background: rgba(255,255,255,0.4); font-size: 14px; outline: none; }
         .resizer { width: 10px; height: 10px; background: var(--gold); position: absolute; right: 0; bottom: 0; cursor: se-resize; }
 
-        /* Clean Mode for Export */
+        /* Clean Export Mode */
         .exporting .mask, .exporting .text-box { border: none !important; background: transparent !important; }
         .exporting .resizer { display: none !important; }
     </style>
@@ -31,14 +35,18 @@
 
 <div class="menu">
     <input type="file" id="pdf-file" accept="application/pdf" style="display:none">
-    <button class="btn btn-tool" onclick="document.getElementById('pdf-file').click()">📂 Open PDF</button>
-    <button class="btn btn-tool" onclick="addMask()">⬜ Erase Area</button>
-    <button class="btn btn-tool" onclick="addText()">➕ Add Text</button>
+    <button class="btn btn-action" onclick="document.getElementById('pdf-file').click()">📂 Open</button>
+    <div style="width: 2px; background: #444; margin: 0 10px;"></div>
+    <button class="btn btn-tool" onclick="addMask()">⬜ Erase</button>
+    <button class="btn btn-tool" onclick="addText()">➕ Text</button>
+    <div style="width: 2px; background: #444; margin: 0 10px;"></div>
+    <button class="btn btn-action" id="undoBtn" onclick="undo()" disabled>↩️ Undo</button>
+    <button class="btn btn-action" id="redoBtn" onclick="redo()" disabled>↪️ Redo</button>
     <button class="btn btn-save" onclick="savePdf()">💾 Save & Download</button>
 </div>
 
-<div style="text-align: center;">
-    <div id="container">
+<div id="container-wrap">
+    <div id="pdf-container">
         <canvas id="pdf-canvas"></canvas>
     </div>
 </div>
@@ -47,63 +55,132 @@
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
     let pdfBytes = null;
     let elements = [];
+    let history = [];
+    let redoStack = [];
 
-    // --- 1. LOAD PDF ---
+    // --- 1. CORE ENGINE ---
     document.getElementById('pdf-file').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
         pdfBytes = await file.arrayBuffer();
+        loadPDF();
+    };
+
+    async function loadPDF() {
         const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({scale: 1.5});
         const canvas = document.getElementById('pdf-canvas');
         canvas.width = viewport.width; canvas.height = viewport.height;
         await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
-        document.getElementById('container').style.width = canvas.width + 'px';
-        document.getElementById('container').style.height = canvas.height + 'px';
-    };
-
-    function addMask() {
-        const div = createEl('mask');
-        div.style.width = "80px"; div.style.height = "24px";
-        const resizer = document.createElement('div');
-        resizer.className = 'resizer';
-        div.appendChild(resizer);
-        setupResize(div, resizer);
+        const cont = document.getElementById('pdf-container');
+        cont.style.width = canvas.width + 'px'; cont.style.height = canvas.height + 'px';
     }
 
-    function addText() {
-        const div = createEl('text-box');
-        div.contentEditable = true;
-        div.innerText = "New Text";
-    }
+    function addMask() { recordAction(); createEl('mask'); }
+    function addText() { recordAction(); createEl('text-box'); }
 
-    function createEl(type) {
+    function createEl(type, state = null) {
         const div = document.createElement('div');
         div.className = type; div.dataset.type = type;
-        div.style.left = "150px"; div.style.top = "150px";
-        document.getElementById('container').appendChild(div);
+        div.style.left = state ? state.left : "100px";
+        div.style.top = state ? state.top : "100px";
+        if(type === 'text-box') {
+            div.contentEditable = true;
+            div.innerText = state ? state.text : "New Text";
+            div.oninput = () => recordAction();
+        } else {
+            div.style.width = state ? state.width : "80px";
+            div.style.height = state ? state.height : "24px";
+            const rs = document.createElement('div');
+            rs.className = 'resizer';
+            div.appendChild(rs);
+            setupResize(div, rs);
+        }
+        document.getElementById('pdf-container').appendChild(div);
         setupDrag(div);
         elements.push(div);
         return div;
     }
 
-    // --- 2. INTERACTION ---
+    // --- 2. UNDO / REDO LOGIC ---
+    function recordAction() {
+        const snapshot = elements.map(el => ({
+            type: el.dataset.type,
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            text: el.innerText
+        }));
+        history.push(JSON.stringify(snapshot));
+        redoStack = [];
+        updateButtons();
+    }
+
+    function undo() {
+        if (history.length === 0) return;
+        const current = elements.map(el => ({
+            type: el.dataset.type,
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            text: el.innerText
+        }));
+        redoStack.push(JSON.stringify(current));
+        
+        const last = JSON.parse(history.pop());
+        restoreState(last);
+        updateButtons();
+    }
+
+    function redo() {
+        if (redoStack.length === 0) return;
+        const current = elements.map(el => ({
+            type: el.dataset.type,
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            text: el.innerText
+        }));
+        history.push(JSON.stringify(current));
+
+        const next = JSON.parse(redoStack.pop());
+        restoreState(next);
+        updateButtons();
+    }
+
+    function restoreState(state) {
+        elements.forEach(el => el.remove());
+        elements = [];
+        state.forEach(s => createEl(s.type, s));
+    }
+
+    function updateButtons() {
+        document.getElementById('undoBtn').disabled = history.length === 0;
+        document.getElementById('redoBtn').disabled = redoStack.length === 0;
+    }
+
+    // --- 3. DRAG & RESIZE ---
     function setupDrag(el) {
         el.onmousedown = (e) => {
             if(e.target.className === 'resizer') return;
+            recordAction();
             let ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
-            document.onmousemove = (e) => { 
-                el.style.left = (e.clientX - ox) + 'px'; 
-                el.style.top = (e.clientY - oy) + 'px'; 
+            document.onmousemove = (e) => {
+                el.style.left = (e.clientX - ox) + 'px';
+                el.style.top = (e.clientY - oy) + 'px';
             };
             document.onmouseup = () => document.onmousemove = null;
         };
     }
 
-    function setupResize(el, resizer) {
-        resizer.onmousedown = (e) => {
+    function setupResize(el, rs) {
+        rs.onmousedown = (e) => {
             e.stopPropagation();
+            recordAction();
             document.onmousemove = (e) => {
                 el.style.width = Math.max(10, e.clientX - el.getBoundingClientRect().left) + 'px';
                 el.style.height = Math.max(10, e.clientY - el.getBoundingClientRect().top) + 'px';
@@ -112,57 +189,41 @@
         };
     }
 
-    // --- 3. THE FIXED SAVE FUNCTION ---
+    // --- 4. SAVE FUNCTION (FIXED) ---
     async function savePdf() {
-        if(!pdfBytes) return alert("Upload a PDF first!");
-        
+        if(!pdfBytes) return alert("Open a PDF first");
         document.body.classList.add('exporting');
-
+        
         try {
             const doc = await PDFDocument.load(pdfBytes);
-            const helveticaFont = await doc.embedFont(StandardFonts.HelveticaBold);
+            const font = await doc.embedFont(StandardFonts.HelveticaBold);
             const page = doc.getPages()[0];
             const { width, height } = page.getSize();
             const canv = document.getElementById('pdf-canvas');
-
-            const scaleX = width / canv.width;
-            const scaleY = height / canv.height;
+            const sx = width / canv.width, sy = height / canv.height;
 
             for (let el of elements) {
                 const r = el.getBoundingClientRect();
                 const cr = canv.getBoundingClientRect();
-                
-                const px = (r.left - cr.left) * scaleX;
-                // PDF Y-axis starts from bottom, adjust for element height
-                const py = height - ((r.top - cr.top) * scaleY) - (el.dataset.type === 'mask' ? (r.height * scaleY) : (14 * scaleY));
+                const px = (r.left - cr.left) * sx;
+                const py = height - ((r.top - cr.top) * sy) - (el.dataset.type === 'mask' ? (r.height * sy) : (14 * sy));
 
                 if(el.dataset.type === 'mask') {
-                    page.drawRectangle({
-                        x: px, y: py,
-                        width: r.width * scaleX,
-                        height: r.height * scaleY,
-                        color: rgb(1, 1, 1)
-                    });
+                    page.drawRectangle({ x: px, y: py, width: r.width*sx, height: r.height*sy, color: rgb(1,1,1) });
                 } else {
-                    page.drawText(el.innerText, {
-                        x: px, y: py,
-                        size: 11 * scaleY,
-                        font: helveticaFont,
-                        color: rgb(0, 0, 0)
-                    });
+                    page.drawText(el.innerText, { x: px, y: py, size: 11 * sy, font: font, color: rgb(0,0,0) });
                 }
             }
 
-            const savedBytes = await doc.save();
-            const blob = new Blob([savedBytes], {type: 'application/pdf'});
+            const out = await doc.save();
+            const blob = new Blob([out], {type: 'application/pdf'});
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = "Edited_Document.pdf";
+            link.download = "OIH_Edited_Doc.pdf";
             link.click();
-            
         } catch (err) {
-            console.error("Save Error:", err);
-            alert("Save failed. Try refreshing and uploading again.");
+            alert("Error saving: Use Chrome for best results.");
+            console.error(err);
         } finally {
             document.body.classList.remove('exporting');
         }
