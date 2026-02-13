@@ -2,492 +2,250 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>OIH ID Designer – v86.9.6</title>
+<title>OIH Premium Designer – v86.9.90</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
 
 <style>
 :root { 
     --gold: #c9a035; 
     --bg-dark: #000000;
-    --panel-bg: rgba(20, 20, 20, 0.95);
+    --panel-bg: rgba(15, 15, 15, 0.98);
     --input-fill: #e0f2fe; 
-    --danger: #ef4444;
 }
 
 body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #fff; overflow-x: hidden; touch-action: none; }
 
-/* --- AI SCANNER LOADER --- */
-#ai-loader {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-    z-index: 20000; flex-direction: column; align-items: center; justify-content: center;
-    backdrop-filter: blur(10px);
+/* --- LOGIN --- */
+#login-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #000; }
+.login-card { background: #111; padding: 40px; border-radius: 20px; border: 1px solid var(--gold); width: 300px; text-align: center; }
+.login-card input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 5px; border: none; background: var(--input-fill); font-weight: 700; }
+.login-btn { width: 100%; margin-top: 15px; padding: 12px; background: var(--gold); border: none; font-weight: 800; cursor: pointer; border-radius: 5px; }
+
+/* --- UI LAYOUT --- */
+.wrap { display: none; max-width: 1240px; margin: auto; padding: 20px; grid-template-columns: 340px 1fr; gap: 25px; padding-bottom: 160px; }
+.panel { background: var(--panel-bg); border-radius: 15px; padding: 20px; border: 1px solid #333; position: sticky; top: 20px; height: fit-content; }
+.file-box { background: var(--input-fill); color: #000; border: 2px solid var(--gold); padding: 10px; border-radius: 8px; font-weight: 800; text-align: center; cursor: pointer; margin-bottom: 10px; }
+input[type="text"] { width: 100%; padding: 10px; margin: 5px 0 15px 0; box-sizing: border-box; border-radius: 5px; border: 2px solid var(--gold); background: var(--input-fill); font-weight: 700; }
+.action-row { display: flex; gap: 10px; }
+.icon-btn { flex: 1; height: 45px; border-radius: 8px; border: none; cursor: pointer; font-size: 20px; color: #fff; }
+
+canvas { width: 100%; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px; background: #111; cursor: crosshair; }
+
+/* --- ALWAYS VISIBLE PREVIEW BAR --- */
+#ticker-bar { 
+    position: fixed; bottom: 0; left: 0; width: 100%; 
+    background: #050505; 
+    border-top: 3px solid var(--gold); 
+    height: 110px; 
+    display: none; /* Changed to flex via JS after login */
+    align-items: center; 
+    z-index: 9999999 !important; 
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.9);
 }
-
-.scanner-container {
-    position: relative;
-    width: 200px; height: 150px;
-    display: flex; align-items: center; justify-content: center;
+.ticker-label { 
+    background: var(--gold); color: #000; padding: 0 15px; 
+    height: 100%; display: flex; align-items: center; 
+    font-weight: 900; font-size: 11px; text-align: center; width: 85px; z-index: 2;
 }
+.ticker-view-port { flex-grow: 1; overflow: hidden; display: flex; align-items: center; height: 100%; }
+.marquee { display: flex; white-space: nowrap; animation: scroll 30s linear infinite; padding-left: 20px; }
+.marquee:hover { animation-play-state: paused; }
+.empty-msg { color: #444; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
 
-.scanner-logo { width: 120px; opacity: 0.4; }
-
-.scanner-line {
-    position: absolute;
-    width: 160px; height: 3px;
-    background: var(--gold);
-    box-shadow: 0 0 15px var(--gold), 0 0 30px var(--gold);
-    z-index: 10;
-    animation: scanMove 2s ease-in-out infinite;
+.card-thumb { 
+    height: 75px; width: 120px; background: #1a1a1a; border-radius: 4px; 
+    margin-right: 20px; border: 1px solid #333; overflow: hidden; 
+    position: relative; flex-shrink: 0; cursor: pointer; transition: 0.2s;
 }
+.card-thumb:hover { border-color: #fff; transform: translateY(-5px); }
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.card-thumb-tag { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); color: var(--gold); font-size: 8px; text-align: center; padding: 2px 0; font-weight: 800; }
 
-@keyframes scanMove {
-    0% { top: 10%; opacity: 0; }
-    50% { opacity: 1; }
-    100% { top: 90%; opacity: 0; }
-}
+@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-#prog-text {
-    color: var(--gold); font-weight: 800; font-size: 36px;
-    margin-top: 20px; letter-spacing: 2px;
-    text-shadow: 0 0 10px rgba(201, 160, 53, 0.4);
-}
-
-.scan-msg { font-size: 10px; letter-spacing: 4px; color: #666; margin-top: 5px; font-weight: 700; }
-
-/* --- LOGIN SCREEN --- */
-#login-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 9999; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('login_bg.png');
-    background-size: cover; background-position: center;
-}
-
-.login-card {
-    background: rgba(15, 15, 15, 0.98);
-    padding: 40px; border-radius: 24px; border: 1px solid var(--gold);
-    width: 380px; text-align: center; box-shadow: 0 40px 80px rgba(0,0,0,0.9);
-    backdrop-filter: blur(20px);
-}
-
-.login-card input {
-    width: 100% !important; 
-    box-sizing: border-box !important; 
-    display: block; padding: 14px; margin-top: 15px; 
-    border-radius: 8px; border: 2px solid var(--gold);
-    background: var(--input-fill); font-weight: 700; color: #000;
-}
-
-.login-btn {
-    width: 100%; margin-top: 25px; padding: 15px; 
-    background: var(--gold); color: #000; border: none; 
-    border-radius: 10px; font-weight: 800; cursor: pointer;
-}
-
-/* --- DESIGNER UI --- */
-.wrap { 
-    display: none; 
-    max-width: 1240px; margin: auto; padding: 20px; 
-    grid-template-columns: 350px 1fr; gap: 25px; 
-}
-
-.panel {
-    background: var(--panel-bg); border-radius: 20px; padding: 25px; height: fit-content;
-    position: sticky; top: 20px; border: 1px solid rgba(255,255,255,0.1);
-}
-
-.header-area { cursor: pointer; user-select: none; margin-bottom: 20px; text-align: center; }
-.ui-logo { width: 100%; max-height: 80px; object-fit: contain; margin-bottom: 10px; display: block; }
-h1 { font-size: 18px; color: var(--gold); margin: 0; letter-spacing: 1px; font-weight: 800; }
-.sub-tag { font-size: 9px; opacity: 0.5; display: block; letter-spacing: 2px; }
-
-label { font-size: 10px; font-weight: 800; margin-top: 15px; display: block; text-transform: uppercase; color: #888; }
-
-.file-box {
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--input-fill); color: #000; border: 2px solid var(--gold);
-    border-radius: 8px; margin-top: 5px; padding: 8px 12px; font-weight: 700; font-size: 13px;
-    cursor: pointer;
-}
-
-input[type="text"] {
-    width: 100%; padding: 10px; border-radius: 8px; margin-top: 5px; box-sizing: border-box;
-    background: var(--input-fill); color: #000; border: 2px solid var(--gold); font-weight: 700;
-}
-
-.ai-btn {
-    width: 100%; margin-top: 10px; padding: 12px; border-radius: 10px;
-    background: #6366f1; color: #fff; border: none; cursor: pointer; font-weight: 700;
-}
-
-.action-row { display: flex; gap: 10px; margin-top: 20px; }
-.icon-btn { flex: 1; height: 45px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
-.save-btn { background: #10b981; color: white; }
-.print-btn { background: #3b82f6; color: white; }
-.lock-btn { background: #374151; color: white; border: 1px solid rgba(255,255,255,0.1); display: none; }
-.lock-btn.unlocked { background: var(--gold); }
-.logout-btn { background: #ef4444; color: white; }
-
-canvas { 
-    width: 100%; max-width: 1011px; height: auto; 
-    border-radius: 14px; background: #1a1a1a; 
-    display: block; border: 1px solid #333; margin-bottom: 20px;
-}
-
+/* PRINT SETTINGS (PORTRAIT MECHANICAL FEED) */
 @media print {
-    @page { 
-        margin: 0; 
-        size: auto; 
-    }
-    body { 
-        background: white !important; 
-        margin: 0 !important; 
-        padding: 0 !important;
-    }
-    
-    /* Hide everything except the cards */
-    #login-overlay, .panel, #ai-loader, .sub-tag, .scan-msg { 
-        display: none !important; 
-    }
-    
-    .wrap { 
-        display: block !important; 
-        padding: 0 !important; 
-        margin: 0 !important; 
-    }
-
-    #print-area {
-        display: block !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* PAGE 1: Front Canvas */
-    #fc { 
-        display: block !important;
-        border: none !important; 
-        margin: 0 !important; 
-        width: 100% !important;
-        page-break-after: always !important; /* This forces the back to the next page */
-    }
-
-    /* PAGE 2: Back Canvas */
-    #bc { 
-        display: block !important;
-        border: none !important; 
-        margin: 0 !important; 
-        width: 100% !important;
-        page-break-before: avoid !important; /* Prevents the blank gap */
+    @page { size: 54mm 85.6mm; margin: 0; }
+    #login-overlay, .panel, #ticker-bar { display: none !important; }
+    body { background: white; }
+    canvas { 
+        width: 85.6mm !important; height: 54mm !important; 
+        transform: rotate(90deg) translate(0, -54mm); 
+        transform-origin: top left; 
+        page-break-after: always;
+        border: none !important;
     }
 }
 </style>
 </head>
 <body>
 
-<div id="ai-loader">
-    <div class="scanner-container">
-        <div class="scanner-line"></div>
-        <img src="ui_logo.png" class="scanner-logo">
-    </div>
-    <div id="prog-text">0%</div>
-    <div class="scan-msg">REMOVING BACKGROUND</div>
-</div>
-
 <div id="login-overlay">
     <div class="login-card">
-        <img src="ui_logo.png" style="width: 80px;" alt="Logo">
-        <h2 style="color:var(--gold); font-weight:800; margin-top: 20px;">OIH Premium ID Suite</h2>
-        <form onsubmit="event.preventDefault(); checkLogin();">
-            <input type="text" id="user-input" name="username" placeholder="Username" autofocus autocomplete="username">
-            <input type="password" id="pass-input" name="password" placeholder="Password" autocomplete="current-password">
-            <button type="submit" class="login-btn">LOGIN</button>
-        </form>
-        <div id="login-error" style="color:var(--danger); font-size:12px; margin-top:15px; display:none; font-weight:700;">Invalid Access</div>
+        <h2 style="color:var(--gold)">OIH ACCESS</h2>
+        <input type="text" id="user" placeholder="Username">
+        <input type="password" id="pass" placeholder="Password">
+        <button class="login-btn" onclick="tryLogin()">ENTER SYSTEM</button>
     </div>
 </div>
 
-<div class="wrap" id="designer-ui">
-  <div class="panel">
-    <div class="header-area" ondblclick="revealLock()">
-        <img src="ui_logo.png" class="ui-logo" alt="OIH Logo">
-        <h1>OIH ID CARD DESIGNER</h1>
-        <span class="sub-tag">PREMIUM ID SUITE</span>
+<div class="wrap" id="app">
+    <div class="panel">
+        <label>Photo</label>
+        <div class="file-box" onclick="document.getElementById('imgIn').click()">UPLOAD IMAGE</div>
+        <input type="file" id="imgIn" style="display:none" onchange="previewImg(event)">
+        
+        <label>Name</label><input type="text" id="name" oninput="render()">
+        <label>Designation</label><input type="text" id="job" oninput="render()">
+        <label>ID Number</label><input type="text" id="idnum" oninput="render()">
+
+        <div class="action-row">
+            <button class="icon-btn" style="background:#10b981" onclick="saveCard()">💾 SAVE</button>
+            <button class="icon-btn" style="background:#3b82f6" onclick="window.print()">🖨️ PRINT</button>
+            <button class="icon-btn" id="lBtn" style="background:#333" onclick="toggleLock()">🔒</button>
+        </div>
+        <p style="font-size: 9px; color: #555; margin-top: 20px; text-align: center;">IDP SMART-31 PORTRAIT MODE ACTIVE</p>
     </div>
 
-    <label>Photo</label>
-    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="loadPhoto(event)">
-    <div class="file-box" onclick="document.getElementById('photoInput').click()">
-        <span id="displayFileName">Choose Photo...</span>
+    <div>
+        <canvas id="front"></canvas>
+        <canvas id="back"></canvas>
     </div>
+</div>
 
-    <button class="ai-btn" onclick="removeBackgroundAI()">✨Remove Background</button>
-    
-    <label>Full Name</label>
-    <input type="text" id="fullname" placeholder="Name" oninput="handleNameInput(this)">
-    <label>Title</label>
-    <input type="text" id="dg" placeholder="Designation" oninput="draw()">
-    <label>ID Number</label>
-    <input type="text" id="idn" placeholder="ID Number" oninput="draw()">
-
-    <div class="action-row">
-        <button class="icon-btn save-btn" onclick="saveAsPNG()" title="Save PNG">💾</button>
-        <button class="icon-btn print-btn" onclick="window.print()" title="Print">🖨️</button>
-        <button class="icon-btn lock-btn" id="lockBtn" onclick="toggleLock()">
-            <span id="lockIcon">🔒</span>
-        </button>
-        <button class="icon-btn logout-btn" onclick="logout()" title="Logout">🚪</button>
+<div id="ticker-bar">
+    <div class="ticker-label">LAST 10<br>CARDS</div>
+    <div class="ticker-view-port">
+        <div class="marquee" id="ticker-track">
+            <div class="empty-msg">Waiting for first save...</div>
+        </div>
     </div>
-  </div>
-
-  <div id="print-area">
-    <canvas id="fc"></canvas>
-    <canvas id="bc"></canvas>
-  </div>
 </div>
 
 <script>
-// --- AUTH LOGIC ---
-let u_key = "admin"; 
-let p_key = "oih2026";
+const fv = document.getElementById('front'), bv = document.getElementById('back');
+const fctx = fv.getContext('2d'), bctx = bv.getContext('2d');
+fv.width = bv.width = 1011; fv.height = bv.height = 638;
 
-const _u = u_key; const _p = p_key;
-setTimeout(() => { u_key = "********"; p_key = "********"; }, 100);
+let assets = { f: new Image(), b: new Image(), ov: new Image(), ph: null };
+assets.f.src = 'front_base.png'; assets.b.src = 'back_base.png'; assets.ov.src = 'gold_overlay.png';
+assets.f.onload = assets.b.onload = assets.ov.onload = render;
 
-function checkLogin() {
-    const user_in = document.getElementById('user-input').value;
-    const pass_in = document.getElementById('pass-input').value;
-    if (user_in === _u && pass_in === _p) {
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('designer-ui').style.display = 'grid';
-        sessionStorage.setItem('oih_auth', 'true');
-        draw();
-    } else {
-        document.getElementById('login-error').style.display = 'block';
-    }
-}
-function logout() { sessionStorage.removeItem('oih_auth'); location.reload(); }
+let phPos = { x: 550, y: 70, w: 400, h: 500 }, ovPos = { x: 440, y: 16, w: 600, h: 638 };
+let isLocked = true, phRatio = 1, active = null, mode = null, start = {};
 
-// --- DESIGNER LOGIC ---
-const fc = document.getElementById("fc"), bc = document.getElementById("bc"),
-      fn = document.getElementById("fullname"), dg = document.getElementById("dg"), idn = document.getElementById("idn");
-
-fc.width = bc.width = 1011; fc.height = bc.height = 638;
-const fctx = fc.getContext("2d"), bctx = bc.getContext("2d");
-
-const CONFIG = { bleed: { offset: -24, extraW: 48, extraH: 40 }, overlay: { x: 440, y: 16, widthScale: 1.10 } };
-let imgs = { front: new Image(), overlay: new Image(), back: new Image(), photo: null };
-let isLocked = true, isInteracting = false, photoRatio = 1;
-
-let frontPos = { x: CONFIG.bleed.offset, y: CONFIG.bleed.offset, w: 1011 + CONFIG.bleed.extraW, h: 638 + CONFIG.bleed.extraH };
-let photoPos = { x: 550, y: 70, w: 400, h: 500 };
-let overlayPos = { x: CONFIG.overlay.x, y: CONFIG.overlay.y, w: 0, h: 638 };
-let backPos = { x: CONFIG.bleed.offset, y: 0, w: 1011 + CONFIG.bleed.extraW, h: 638 + CONFIG.bleed.extraH };
-
-imgs.front.src = "./front_base.png";
-imgs.overlay.src = "./gold_overlay.png";
-imgs.back.src = "./back_base.png";
-
-imgs.overlay.onload = () => {
-    const scaleFactor = 638 / imgs.overlay.height; 
-    overlayPos.w = (imgs.overlay.width * scaleFactor) * CONFIG.overlay.widthScale;
-    draw();
-};
-imgs.front.onload = imgs.back.onload = draw;
-
-function loadPhoto(e) {
-    const file = e.target.files[0];
-    if(!file) return;
-    document.getElementById("displayFileName").innerText = file.name;
-    const r = new FileReader();
-    r.onload = ev => {
-        const i = new Image();
-        i.onload = () => { 
-            imgs.photo = i; 
-            photoRatio = i.width / i.height;
-            photoPos.h = photoPos.w / photoRatio; 
-            draw(); 
-        };
-        i.src = ev.target.result;
-    };
-    r.readAsDataURL(file);
-}
-
-function handleNameInput(el) {
-    let words = el.value.split(" ");
-    for (let i = 0; i < words.length; i++) {
-        if (words[i].length > 0) {
-            words[i] = words[i][0].toUpperCase() + words[i].substr(1).toLowerCase();
-        }
-    }
-    el.value = words.join(" ");
-    draw();
-}
-
-function revealLock() {
-    const btn = document.getElementById("lockBtn");
-    btn.style.display = (btn.style.display === "flex") ? "none" : "flex";
-}
-
-function toggleLock() {
-    isLocked = !isLocked;
-    document.getElementById("lockBtn").classList.toggle("unlocked", !isLocked);
-    document.getElementById("lockIcon").innerText = isLocked ? "🔒" : "🔓";
-    draw(); 
-}
-
-function fillTextSmart(ctx, text, x, y, maxW, baseSize, weight) {
-    let size = baseSize;
-    ctx.font = `${weight} ${size}px Inter`;
-    while (ctx.measureText(text).width > maxW && size > 10) {
-        size--;
-        ctx.font = `${weight} ${size}px Inter`;
-    }
-    ctx.fillText(text, x, y);
-}
-
-function draw() {
-    fctx.clearRect(0, 0, 1011, 638);
-    if(imgs.front.complete) fctx.drawImage(imgs.front, frontPos.x, frontPos.y, frontPos.w, frontPos.h);
-    if(imgs.photo) fctx.drawImage(imgs.photo, photoPos.x, photoPos.y, photoPos.w, photoPos.h);
-    if(imgs.overlay.complete) fctx.drawImage(imgs.overlay, overlayPos.x, overlayPos.y, overlayPos.w, overlayPos.h);
+function render() {
+    fctx.clearRect(0,0,1011,638);
+    fctx.drawImage(assets.f, -24, -24, 1059, 678);
+    if(assets.ph) fctx.drawImage(assets.ph, phPos.x, phPos.y, phPos.w, phPos.h);
+    fctx.drawImage(assets.ov, ovPos.x, ovPos.y, ovPos.w, ovPos.h);
     
     fctx.fillStyle = "#000";
-    if(fn.value) fillTextSmart(fctx, fn.value, 70, 465, 450, 46, "800");
-    if(dg.value) fillTextSmart(fctx, dg.value, 70, 525, 450, 34, "700");
-    if(idn.value) fillTextSmart(fctx, "ID No - " + idn.value, 70, 580, 450, 30, "700");
+    fctx.font = "800 46px Inter"; fctx.fillText(document.getElementById('name').value.toUpperCase(), 70, 465);
+    fctx.font = "700 34px Inter"; fctx.fillText(document.getElementById('job').value, 70, 525);
+    fctx.font = "700 30px Inter"; fctx.fillText("ID No: " + document.getElementById('idnum').value, 70, 580);
 
-    if(isInteracting) {
-        if(imgs.photo) drawHandles(fctx, photoPos, "rgba(201, 160, 53, 0.7)");
-        if(!isLocked) drawHandles(fctx, overlayPos, "rgba(201, 160, 53, 0.8)");
+    if(!isLocked) {
+        fctx.strokeStyle = "gold"; fctx.lineWidth = 3;
+        fctx.strokeRect(phPos.x, phPos.y, phPos.w, phPos.h);
+        fctx.strokeRect(ovPos.x, ovPos.y, ovPos.w, ovPos.h);
+        fctx.fillStyle = "gold";
+        fctx.fillRect(phPos.x+phPos.w-20, phPos.y+phPos.h-20, 20, 20);
+        fctx.fillRect(ovPos.x+ovPos.w-20, ovPos.y+ovPos.h-20, 20, 20);
     }
-    bctx.clearRect(0, 0, 1011, 638);
-    if(imgs.back.complete) bctx.drawImage(imgs.back, backPos.x, backPos.y, backPos.w, backPos.h);
+
+    bctx.clearRect(0,0,1011,638);
+    bctx.drawImage(assets.b, -24, 0, 1059, 678);
 }
 
-function drawHandles(ctx, obj, color) {
-    ctx.setLineDash([6, 4]); ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.strokeRect(obj.x, obj.y, obj.w, obj.h); ctx.setLineDash([]);
-    ctx.fillStyle = color; ctx.fillRect(obj.x + obj.w - 22, obj.y + obj.h - 22, 22, 22);
-}
-
-// Interaction
-let action = null, target = null, start = {x:0, y:0, w:0, h:0}, activeCanvas = null;
-const getPos = (e, canvas) => {
-    const r = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (clientX - r.left) * (1011 / r.width), y: (clientY - r.top) * (638 / r.height) };
-};
-
-const initDrag = (e, canvas, isFront) => {
-    isInteracting = true; activeCanvas = canvas;
-    const p = getPos(e, canvas);
-    const check = (obj, canAdjust) => {
-        if(!canAdjust) return null;
-        if(p.x > obj.x + obj.w - 60 && p.x < obj.x + obj.w + 20 && p.y > obj.y + obj.h - 60 && p.y < obj.y + obj.h + 20) return "resize";
-        if(p.x > obj.x && p.x < obj.x + obj.w && p.y > obj.y && p.y < obj.y + obj.h) return "move";
-        return null;
-    };
-    if(isFront) {
-        let res = check(photoPos, true); 
-        if(res) { target = photoPos; action = res; }
-        else {
-            res = check(overlayPos, !isLocked); 
-            if(res) { target = overlayPos; action = res; }
-            else if(!isLocked) { target = frontPos; action = "move"; }
-        }
-    } else if(!isLocked) { target = backPos; action = "move"; }
-    if(target) start = { x: p.x - target.x, y: p.y - target.y, w: target.w, h: target.h, px: p.x, py: p.y };
-    draw();
-};
-
-window.addEventListener('mousemove', (e) => {
-    if(!target || !activeCanvas) return;
-    const p = getPos(e, activeCanvas);
-    if(action === "move") { target.x = p.x - start.x; target.y = p.y - start.y; }
-    else if(action === "resize") {
-        let newW = Math.max(50, start.w + (p.x - start.px));
-        target.w = newW;
-        if(target === photoPos) target.h = newW / photoRatio;
-        else target.h = Math.max(50, start.h + (p.y - start.py));
-    }
-    draw();
-});
-
-window.addEventListener('mouseup', () => { isInteracting = false; target = null; action = null; draw(); });
-fc.addEventListener('mousedown', e => initDrag(e, fc, true));
-bc.addEventListener('mousedown', e => initDrag(e, bc, false));
-
-// --- REMOVE BACKGROUND WITH LASER SCANNER ---
-async function removeBackgroundAI() {
-    const file = document.getElementById('photoInput').files[0];
-    if(!file) return alert("Please select a photo first.");
+// History Logic
+function refreshTicker() {
+    const list = JSON.parse(localStorage.getItem('oih_final_history')) || [];
+    const track = document.getElementById('ticker-track');
     
-    const loader = document.getElementById('ai-loader');
-    const pText = document.getElementById('prog-text');
-    loader.style.display = 'flex';
-
-    // Simulate progress
-    let prog = 0;
-    const interval = setInterval(() => {
-        if(prog < 90) {
-            prog += Math.floor(Math.random() * 7);
-            pText.innerText = prog + '%';
-        }
-    }, 400);
-
-    try {
-        const fd = new FormData(); fd.append('image_file', file);
-        const res = await fetch('https://api.remove.bg/v1.0/removebg', {
-            method: 'POST', 
-            headers: { 'X-Api-Key': "c9sbqbPTLtacLw1rZbm4KjHE" }, 
-            body: fd
-        });
-
-        if(res.ok) {
-            pText.innerText = '100%';
-            const b = await res.blob();
-            const i = new Image(); 
-            i.onload = () => { 
-                imgs.photo = i; 
-                photoRatio = i.width/i.height; 
-                photoPos.h = photoPos.w / photoRatio;
-                draw(); 
-                setTimeout(() => { loader.style.display = 'none'; }, 500);
-            };
-            i.src = URL.createObjectURL(b);
-        } else {
-            alert("API Error - Please check your key.");
-            loader.style.display = 'none';
-        }
-    } catch (e) {
-        loader.style.display = 'none';
+    if(list.length > 0) {
+        const html = list.map(item => `
+            <div class="card-thumb">
+                <img src="${item.img}">
+                <div class="card-thumb-tag">${item.id}</div>
+            </div>
+        `).join('');
+        track.innerHTML = html + html;
+        track.style.animation = "scroll 30s linear infinite";
     }
-    clearInterval(interval);
 }
 
-function saveAsPNG() {
-    isInteracting = false; 
-    draw();
+function saveCard() {
+    render();
+    const snap = document.createElement('canvas');
+    snap.width = 120; snap.height = 75;
+    snap.getContext('2d').drawImage(fv, 0, 0, 120, 75);
     
-    const name = (fn.value || "ID").trim().replace(/\s+/g, '_');
-    const id = (idn.value || "000").trim().replace(/\s+/g, '_');
+    let list = JSON.parse(localStorage.getItem('oih_final_history')) || [];
+    list.unshift({ id: document.getElementById('idnum').value || 'ID', img: snap.toDataURL('image/jpeg', 0.5) });
+    if(list.length > 10) list.pop();
+    
+    localStorage.setItem('oih_final_history', JSON.stringify(list));
+    refreshTicker();
 
-    // Create just ONE link for the Front Canvas (fc)
     const link = document.createElement('a');
-    link.download = `${name}_${id}_Front.png`;
-    link.href = fc.toDataURL("image/png");
+    link.download = (document.getElementById('name').value || 'Card') + '.png'; 
+    link.href = fv.toDataURL(); 
     link.click();
 }
 
-window.onload = () => {
-    if (sessionStorage.getItem('oih_auth') === 'true') {
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('designer-ui').style.display = 'grid';
-        draw();
-    }
+// Interaction
+fv.onmousedown = (e) => {
+    if(isLocked) return;
+    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
+    const hit = (obj) => x > obj.x && x < obj.x+obj.w && y > obj.y && y < obj.y+obj.h;
+    
+    if(x > phPos.x+phPos.w-40 && y > phPos.y+phPos.h-40) { active = phPos; mode = 'sz'; }
+    else if(hit(phPos)) { active = phPos; mode = 'mv'; }
+    else if(x > ovPos.x+ovPos.w-40 && y > ovPos.y+ovPos.h-40) { active = ovPos; mode = 'sz'; }
+    else if(hit(ovPos)) { active = ovPos; mode = 'mv'; }
+    
+    if(active) start = { x: x - active.x, y: y - active.y, w: active.w, h: active.h, px: x, py: y };
 };
 
-document.addEventListener('contextmenu', event => event.preventDefault());
+window.onmousemove = (e) => {
+    if(!active) return;
+    const r = fv.getBoundingClientRect(), x = (e.clientX - r.left)*(1011/r.width), y = (e.clientY - r.top)*(638/r.height);
+    if(mode === 'mv') { active.x = x - start.x; active.y = y - start.y; }
+    else { 
+        active.w = Math.max(50, start.w + (x - start.px)); 
+        if(active === phPos) active.h = active.w/phRatio;
+        else active.h = Math.max(50, start.h + (y - start.py));
+    }
+    render();
+};
+window.onmouseup = () => active = null;
+
+function toggleLock() { 
+    isLocked = !isLocked; 
+    document.getElementById('lBtn').classList.toggle('unlocked', !isLocked);
+    document.getElementById('lBtn').innerHTML = isLocked ? "🔒" : "🔓";
+    render(); 
+}
+
+function tryLogin() {
+    if(document.getElementById('user').value === 'admin') {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('app').style.display = 'grid';
+        document.getElementById('ticker-bar').style.display = 'flex';
+        refreshTicker();
+    }
+}
+
+function previewImg(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const i = new Image();
+        i.onload = () => { assets.ph = i; phRatio = i.width/i.height; phPos.h = phPos.w/phRatio; render(); };
+        i.src = ev.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+}
 </script>
 </body>
 </html>
