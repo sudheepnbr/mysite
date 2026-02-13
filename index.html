@@ -1,45 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>OIH Cloud PDF Editor</title>
+    <meta charset="UTF-8">
+    <title>OIH Premium - PDF Editor Suite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    
+
     <style>
-        #pdf-container { position: relative; border: 2px solid #c9a035; display: inline-block; background: #333; }
-        .text-overlay { 
-            position: absolute; border: 1px dashed var(--gold); 
-            color: black; cursor: move; padding: 2px;
+        :root { --gold: #c9a035; --bg: #0f0f0f; --panel: #1a1a1a; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; }
+
+        /* --- DASHBOARD & UI --- */
+        .toolbar { 
+            position: sticky; top: 0; background: var(--panel); padding: 15px; 
+            display: flex; gap: 10px; border-bottom: 1px solid var(--gold); z-index: 100;
+            align-items: center; justify-content: center;
         }
-        .toolbar { background: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+
+        .btn { 
+            padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; 
+            font-weight: 700; font-size: 13px; transition: 0.2s;
+        }
+        .btn-gold { background: var(--gold); color: #000; }
+        .btn-white { background: #fff; color: #000; }
+        .btn-save { background: #10b981; color: #fff; }
+
+        /* --- EDITOR CANVAS --- */
+        #editor-viewport { 
+            display: flex; flex-direction: column; align-items: center; padding: 40px; 
+            background: #222; min-height: 100vh;
+        }
+        
+        #pdf-container { position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.5); background: white; }
         canvas { display: block; }
+
+        /* --- OVERLAYS --- */
+        .text-overlay {
+            position: absolute; color: black; font-family: Arial, sans-serif;
+            font-size: 14px; min-width: 20px; outline: 1px dashed #ccc;
+            cursor: move; padding: 2px; white-space: nowrap;
+        }
+        .text-overlay:focus { outline: 2px solid var(--gold); background: rgba(201, 160, 53, 0.1); }
+
+        .whiteout-overlay {
+            position: absolute; background: white; border: 1px solid #ddd;
+            cursor: move; min-width: 10px; min-height: 10px;
+        }
+        .resizer {
+            width: 8px; height: 8px; background: var(--gold);
+            position: absolute; right: -4px; bottom: -4px; cursor: nwse-resize;
+        }
     </style>
 </head>
-<body style="background: #000; color: #fff; font-family: sans-serif;">
+<body>
 
-    <div class="toolbar">
-        <input type="file" id="upload-pdf" accept="application/pdf">
-        <button onclick="addTextField()">➕ Add Text</button>
-        <button onclick="exportModifiedPDF()" style="background: #10b981; color: white;">💾 Save Edited PDF</button>
-    </div>
+<div class="toolbar">
+    <div style="font-weight: 800; color: var(--gold); margin-right: 20px;">OIH PDF EDITOR</div>
+    <input type="file" id="upload-pdf" accept="application/pdf" style="display:none">
+    <button class="btn btn-white" onclick="document.getElementById('upload-pdf').click()">📂 Open PDF</button>
+    <button class="btn btn-gold" onclick="addText()">➕ Add Text</button>
+    <button class="btn btn-gold" onclick="addWhiteout()">⬜ Hide Text (Whiteout)</button>
+    <button class="btn btn-save" onclick="exportPDF()">💾 Download Edited PDF</button>
+</div>
 
+<div id="editor-viewport">
     <div id="pdf-container">
         <canvas id="pdf-render"></canvas>
     </div>
+</div>
 
 <script>
     const { PDFDocument, rgb } = PDFLib;
-    let existingPdfBytes = null;
-    let textElements = [];
+    let pdfDocBytes = null;
+    let overlays = []; // Stores both text and whiteout elements
 
-    // --- 1. LOAD & RENDER PDF ---
+    // --- 1. LOAD PDF ---
     document.getElementById('upload-pdf').addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        existingPdfBytes = await file.arrayBuffer();
-        
-        const loadingTask = pdfjsLib.getDocument({data: existingPdfBytes});
+        if (!file) return;
+        pdfDocBytes = await file.arrayBuffer();
+        renderPDFPage(1);
+    });
+
+    async function renderPDFPage(pageNum) {
+        const loadingTask = pdfjsLib.getDocument({data: pdfDocBytes});
         const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1); // Load first page
+        const page = await pdf.getPage(pageNum);
         
         const viewport = page.getViewport({scale: 1.5});
         const canvas = document.getElementById('pdf-render');
@@ -48,62 +96,104 @@
         canvas.width = viewport.width;
 
         await page.render({canvasContext: context, viewport: viewport}).promise;
-    });
-
-    // --- 2. ADD EDITABLE TEXT ---
-    function addTextField() {
-        const div = document.createElement('div');
-        div.className = 'text-overlay';
-        div.contentEditable = true;
-        div.innerText = "Type here...";
-        div.style.left = "50px";
-        div.style.top = "50px";
-        
-        // Simple drag logic
-        div.onmousedown = (e) => {
-            let shiftX = e.clientX - div.getBoundingClientRect().left;
-            let shiftY = e.clientY - div.getBoundingClientRect().top;
-            document.onmousemove = (e) => {
-                div.style.left = e.clientX - shiftX + 'px';
-                div.style.top = e.clientY - shiftY + 'px';
-            };
-            document.onmouseup = () => { document.onmousemove = null; };
-        };
-        
-        document.getElementById('pdf-container').appendChild(div);
-        textElements.push(div);
+        document.getElementById('pdf-container').style.width = canvas.width + 'px';
+        document.getElementById('pdf-container').style.height = canvas.height + 'px';
     }
 
-    // --- 3. EXPORT EDITED PDF ---
-    async function exportModifiedPDF() {
-        if (!existingPdfBytes) return alert("Upload a PDF first");
+    // --- 2. ADD TOOLS ---
+    function addText() {
+        const el = document.createElement('div');
+        el.className = 'text-overlay';
+        el.contentEditable = true;
+        el.innerText = "New Text";
+        setupElement(el, "text");
+    }
 
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-        const { height } = firstPage.getSize();
+    function addWhiteout() {
+        const el = document.createElement('div');
+        el.className = 'whiteout-overlay';
+        
+        const resizer = document.createElement('div');
+        resizer.className = 'resizer';
+        el.appendChild(resizer);
+        
+        setupElement(el, "whiteout");
+        setupResizer(el, resizer);
+    }
 
-        for (let el of textElements) {
+    function setupElement(el, type) {
+        el.style.left = "100px";
+        el.style.top = "100px";
+        el.dataset.type = type;
+        document.getElementById('pdf-container').appendChild(el);
+        makeDraggable(el);
+        overlays.push(el);
+        el.focus();
+    }
+
+    // --- 3. DRAG & RESIZE LOGIC ---
+    function makeDraggable(el) {
+        el.onmousedown = (e) => {
+            if (e.target.className === 'resizer') return;
+            let sx = e.clientX - el.offsetLeft;
+            let sy = e.clientY - el.offsetTop;
+            document.onmousemove = (e) => {
+                el.style.left = (e.clientX - sx) + 'px';
+                el.style.top = (e.clientY - sy) + 'px';
+            };
+            document.onmouseup = () => document.onmousemove = null;
+        };
+    }
+
+    function setupResizer(el, resizer) {
+        resizer.onmousedown = (e) => {
+            e.stopPropagation();
+            let startW = el.offsetWidth;
+            let startH = el.offsetHeight;
+            let startX = e.clientX;
+            let startY = e.clientY;
+
+            document.onmousemove = (e) => {
+                el.style.width = startW + (e.clientX - startX) + 'px';
+                el.style.height = startH + (e.clientY - startY) + 'px';
+            };
+            document.onmouseup = () => document.onmousemove = null;
+        };
+    }
+
+    // --- 4. EXPORT (FLATTEN) ---
+    async function exportPDF() {
+        if (!pdfDocBytes) return alert("Please open a PDF first.");
+        const pdfDoc = await PDFDocument.load(pdfDocBytes);
+        const page = pdfDoc.getPages()[0];
+        const { width, height } = page.getSize();
+        const canvas = document.getElementById('pdf-render');
+
+        for (let el of overlays) {
             const rect = el.getBoundingClientRect();
-            const containerRect = document.getElementById('pdf-render').getBoundingClientRect();
-            
-            // Map HTML coordinates to PDF coordinates
-            const x = (rect.left - containerRect.left) * (firstPage.getWidth() / containerRect.width);
-            const y = height - ((rect.top - containerRect.top) * (firstPage.getHeight() / containerRect.height)) - 12;
+            const canvRect = canvas.getBoundingClientRect();
 
-            firstPage.drawText(el.innerText, {
-                x: x,
-                y: y,
-                size: 12,
-                color: rgb(0, 0, 0),
-            });
+            // Coordinate mapping
+            const x = (rect.left - canvRect.left) * (width / canvRect.width);
+            const y = height - ((rect.top - canvRect.top) * (height / canvRect.height)) - (el.dataset.type === 'whiteout' ? (rect.height * (height / canvRect.height)) : 12);
+
+            if (el.dataset.type === 'whiteout') {
+                page.drawRectangle({
+                    x, y,
+                    width: rect.width * (width / canvRect.width),
+                    height: rect.height * (height / canvRect.height),
+                    color: rgb(1, 1, 1),
+                });
+            } else {
+                page.drawText(el.innerText, { x, y, size: 12, color: rgb(0, 0, 0) });
+            }
         }
 
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const bytes = await pdfDoc.save();
+        const blob = new Blob([bytes], { type: "application/pdf" });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = "Edited_Document.pdf";
+        link.download = "Edited_OIH_Doc.pdf";
         link.click();
     }
 </script>
